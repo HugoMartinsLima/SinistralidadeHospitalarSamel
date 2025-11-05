@@ -656,6 +656,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ENDPOINTS DE CONTRATOS (Leitura apenas - tabela pls_contrato)
   // ============================================
 
+  // ENDPOINT DE TESTE - Retorna dados fixos sem consultar Oracle
+  app.get("/api/contratos-teste", async (req, res) => {
+    try {
+      console.log('🧪 Endpoint de teste /api/contratos-teste chamado');
+      
+      const dadosTeste = {
+        data: [
+          {
+            nrContrato: 1270,
+            cdCgcEstipulante: "04347163000148",
+            dsEstipulante: "MOTO HONDA DA AMAZONIA LTDA"
+          },
+          {
+            nrContrato: 2444,
+            cdCgcEstipulante: "08281892000158",
+            dsEstipulante: "2E DESPACHOS ADUANEIROS LTDA"
+          },
+          {
+            nrContrato: 3501,
+            cdCgcEstipulante: "12345678000190",
+            dsEstipulante: "EMPRESA TESTE LTDA"
+          }
+        ],
+        pagination: {
+          limit: 50,
+          offset: 0,
+          total: 3
+        }
+      };
+      
+      console.log('✅ Retornando dados de teste:', dadosTeste.data.length, 'contratos');
+      res.json(dadosTeste);
+    } catch (error) {
+      console.error('❌ Erro no endpoint de teste:', error);
+      res.status(500).json({
+        error: "Erro no endpoint de teste",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Listar todos os contratos
   app.get("/api/contratos", async (req, res) => {
     try {

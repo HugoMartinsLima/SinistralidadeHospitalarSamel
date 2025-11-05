@@ -61,6 +61,26 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Criar um sub-app Express separado para o Vite/frontend
+  // Isso impede que o Vite intercepte rotas /api/*
+  const clientApp = express();
+
+  // Setup Vite/static no sub-app (NÃO no app principal)
+  if (app.get("env") === "development") {
+    await setupVite(clientApp, server);
+  } else {
+    serveStatic(clientApp);
+  }
+
+  // Montar o clientApp APENAS para rotas que NÃO são /api
+  // Rotas /api param aqui e seguem para os handlers já registrados
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api") || req.originalUrl.startsWith("/api")) {
+      return next(); // Deixa as rotas /api seguirem para os handlers da API
+    }
+    clientApp(req, res, next); // Outras rotas vão para o Vite/frontend
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -68,15 +88,6 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     throw err;
   });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
