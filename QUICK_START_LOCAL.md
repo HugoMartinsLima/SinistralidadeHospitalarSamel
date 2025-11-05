@@ -40,7 +40,22 @@ ORACLE_PASSWORD=sua_senha
 ORACLE_SERVICE=outros.sameldm.com
 ```
 
-### 3️⃣ Rodar!
+### 3️⃣ Corrigir Scripts (Somente Windows)
+
+**Se você usa Windows**, edite `package.json` e adicione `cross-env` antes de `NODE_ENV`:
+
+```json
+"scripts": {
+  "dev": "cross-env NODE_ENV=development tsx server/index.ts",
+  "start": "cross-env NODE_ENV=production node dist/index.js",
+}
+```
+
+**Linux/Mac:** Pode pular este passo! ✅
+
+👉 **Detalhes completos:** Veja `CORRECAO_WINDOWS.md`
+
+### 4️⃣ Rodar!
 
 ```bash
 npm run dev
