@@ -8,21 +8,24 @@ API REST Node.js + Express integrada com Oracle Database para gerenciamento de s
 
 Como o Oracle Database está em uma **rede privada** (192.168.2.15), **rode localmente** na sua máquina.
 
-### ⚡ Início Rápido (4 passos)
+### ⚡ Início Rápido (5 passos)
 
 ```bash
 # 1. Instalar dependências
 npm install
 
-# 2. Configurar credenciais Oracle
-cp .env.example .env
-# Edite o .env com suas credenciais
+# 2. Criar arquivo .env
+copy .env.example .env
+# (Linux/Mac: cp .env.example .env)
 
-# 3. SOMENTE WINDOWS: Editar package.json
+# 3. Editar .env com suas credenciais REAIS do Oracle
+# Abra com Notepad e preencha ORACLE_USER e ORACLE_PASSWORD
+
+# 4. SOMENTE WINDOWS: Editar package.json
 # Adicione "cross-env" antes de "NODE_ENV" nos scripts
-# Veja: CORRECAO_WINDOWS.md
+# Veja: INSTRUCOES_FINAIS_WINDOWS.md
 
-# 4. Rodar!
+# 5. Rodar!
 npm run dev
 ```
 
@@ -34,9 +37,10 @@ npm run dev
 
 | Arquivo | Descrição |
 |---------|-----------|
+| **`INSTRUCOES_FINAIS_WINDOWS.md`** | ✅ **COMECE AQUI** - Guia completo Windows |
 | **`QUICK_START_LOCAL.md`** | ⚡ Guia rápido de 5 minutos |
-| **`INSTALACAO_LOCAL.md`** | 📖 Instalação detalhada (Oracle Instant Client, etc) |
-| **`CORRECAO_WINDOWS.md`** | 🪟 Correção para Windows (NODE_ENV) |
+| **`INSTALACAO_LOCAL.md`** | 📖 Instalação detalhada (Oracle Instant Client) |
+| **`SOLUCAO_NJS101.md`** | 🔧 Resolver erro de credenciais Oracle |
 | **`replit.md`** | 📡 Documentação completa da API |
 | **`API_USAGE.md`** | 🎨 Exemplos de integração com Lovable |
 
