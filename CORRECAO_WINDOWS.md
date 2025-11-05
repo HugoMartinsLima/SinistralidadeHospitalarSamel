@@ -1,19 +1,54 @@
 # 🪟 Correção para Rodar no Windows
 
-## ❌ Problema
+## ⚠️ Problemas Comuns no Windows
 
-Se você está no **Windows** e vê este erro:
+### 1️⃣ Erro: `NODE_ENV não é reconhecido`
 
 ```
 'NODE_ENV' não é reconhecido como um comando interno
 ou externo, um programa operável ou um arquivo em lotes.
 ```
 
-## ✅ Solução Rápida (1 minuto)
+**Causa:** Windows não entende sintaxe `NODE_ENV=production`
 
-Você só precisa editar **1 arquivo**: `package.json`
+### 2️⃣ Erro: `NJS-101: no credentials specified`
 
-### Passo 1: Abrir o package.json
+```
+❌ Erro ao criar pool de conexões Oracle: Error: NJS-101: no credentials specified
+```
+
+**Causa:** Arquivo `.env` não foi criado ou está vazio
+
+---
+
+## ✅ Solução Completa (2 minutos)
+
+### ✅ Passo 0: Criar o arquivo .env (CRÍTICO!)
+
+**Antes de tudo**, você PRECISA criar o arquivo `.env`:
+
+```bash
+# No terminal (Windows)
+copy .env.example .env
+```
+
+Depois edite o `.env` com suas credenciais Oracle:
+
+```env
+ORACLE_HOST=192.168.2.15
+ORACLE_PORT=1521
+ORACLE_USER=seu_usuario_real_aqui
+ORACLE_PASSWORD=sua_senha_real_aqui
+ORACLE_SERVICE=outros.sameldm.com
+PORT=5000
+SESSION_SECRET=minha-chave-super-secreta-123
+```
+
+**⚠️ ATENÇÃO:** Substitua `seu_usuario_real_aqui` e `sua_senha_real_aqui` pelas credenciais REAIS do Oracle!
+
+---
+
+### ✅ Passo 1: Editar o package.json
 
 Abra o arquivo `package.json` na raiz do projeto com qualquer editor de texto.
 
