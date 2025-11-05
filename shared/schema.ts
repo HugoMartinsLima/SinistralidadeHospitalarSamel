@@ -89,24 +89,11 @@ export const filtroSinistrosSchema = z.object({
 
 export type FiltroSinistros = z.infer<typeof filtroSinistrosSchema>;
 
-// Schema para contratos
+// Schema para contratos (baseado em pls_contrato)
 export const contratoSchema = z.object({
-  id: z.number(),
-  codigo: z.string(),
-  descricao: z.string(),
-  ativo: z.string().optional(),
+  nrContrato: z.number(),
+  cdCgcEstipulante: z.string(),
+  dsEstipulante: z.string(),
 });
 
 export type Contrato = z.infer<typeof contratoSchema>;
-
-// Schema para criar contrato
-export const insertContratoSchema = z.object({
-  codigo: z.string().min(1, "Código é obrigatório"),
-  descricao: z.string().min(1, "Descrição é obrigatória"),
-  ativo: z.string().optional(),
-});
-
-export type InsertContrato = z.infer<typeof insertContratoSchema>;
-
-// Schema para atualizar contrato
-export const updateContratoSchema = insertContratoSchema.partial();

@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { executeQuery, executeUpdate, testConnection, initializePool } from "./oracle-db";
 import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato } from "@shared/schema";
-import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, insertContratoSchema, updateContratoSchema } from "@shared/schema";
+import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -653,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
-  // ENDPOINTS DE CONTRATOS
+  // ENDPOINTS DE CONTRATOS (Leitura apenas - tabela pls_contrato)
   // ============================================
 
   // Listar todos os contratos
@@ -665,23 +665,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let sql = `
         SELECT 
-          id,
-          codigo,
-          descricao,
-          ativo
-        FROM contratos
+          a.NR_CONTRATO as "nrContrato",
+          a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
+          (SELECT SUBSTR(ds_razao_social, 1, 255) 
+           FROM pessoa_juridica x 
+           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante"
+        FROM pls_contrato a
         WHERE 1=1
       `;
 
       const binds: any = {};
 
-      // Filtro de busca (código ou descrição)
+      // Filtro de busca (número do contrato ou razão social)
       if (search) {
-        sql += ` AND (UPPER(codigo) LIKE UPPER(:search) OR UPPER(descricao) LIKE UPPER(:search))`;
+        sql += ` AND (
+          TO_CHAR(a.NR_CONTRATO) LIKE :search 
+          OR EXISTS (
+            SELECT 1 FROM pessoa_juridica pj 
+            WHERE pj.cd_cgc = a.cd_cgc_estipulante 
+            AND UPPER(pj.ds_razao_social) LIKE UPPER(:searchUpper)
+          )
+        )`;
         binds.search = `%${search}%`;
+        binds.searchUpper = `%${search}%`;
       }
 
-      sql += ` ORDER BY codigo`;
+      sql += ` ORDER BY 3 ASC`;
       sql += ` OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
       binds.offset = offset;
       binds.limit = limit;
@@ -705,34 +714,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Buscar contrato por ID
-  app.get("/api/contratos/:id", async (req, res) => {
+  // Buscar contrato por número
+  app.get("/api/contratos/:nrContrato", async (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const nrContrato = Number(req.params.nrContrato);
 
-      if (isNaN(id)) {
+      if (isNaN(nrContrato)) {
         return res.status(400).json({
-          error: "ID inválido",
-          message: "O ID deve ser um número válido"
+          error: "Número de contrato inválido",
+          message: "O número do contrato deve ser um número válido"
         });
       }
 
       const sql = `
         SELECT 
-          id,
-          codigo,
-          descricao,
-          ativo
-        FROM contratos
-        WHERE id = :id
+          a.NR_CONTRATO as "nrContrato",
+          a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
+          (SELECT SUBSTR(ds_razao_social, 1, 255) 
+           FROM pessoa_juridica x 
+           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante"
+        FROM pls_contrato a
+        WHERE a.NR_CONTRATO = :nrContrato
       `;
 
-      const contratos = await executeQuery<Contrato>(sql, { id });
+      const contratos = await executeQuery<Contrato>(sql, { nrContrato });
 
       if (contratos.length === 0) {
         return res.status(404).json({
           error: "Contrato não encontrado",
-          message: `Nenhum contrato encontrado com ID ${id}`
+          message: `Nenhum contrato encontrado com número ${nrContrato}`
         });
       }
 
@@ -741,194 +751,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Erro ao buscar contrato:', error);
       res.status(500).json({
         error: "Erro ao buscar contrato",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
-    }
-  });
-
-  // Buscar contrato por código
-  app.get("/api/contratos/codigo/:codigo", async (req, res) => {
-    try {
-      const codigo = req.params.codigo;
-
-      const sql = `
-        SELECT 
-          id,
-          codigo,
-          descricao,
-          ativo
-        FROM contratos
-        WHERE UPPER(codigo) = UPPER(:codigo)
-      `;
-
-      const contratos = await executeQuery<Contrato>(sql, { codigo });
-
-      if (contratos.length === 0) {
-        return res.status(404).json({
-          error: "Contrato não encontrado",
-          message: `Nenhum contrato encontrado com código ${codigo}`
-        });
-      }
-
-      res.json(contratos[0]);
-    } catch (error) {
-      console.error('Erro ao buscar contrato por código:', error);
-      res.status(500).json({
-        error: "Erro ao buscar contrato",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
-    }
-  });
-
-  // Criar novo contrato
-  app.post("/api/contratos", async (req, res) => {
-    try {
-      const validatedData = insertContratoSchema.parse(req.body);
-
-      const sql = `
-        INSERT INTO contratos (codigo, descricao, ativo)
-        VALUES (:codigo, :descricao, :ativo)
-        RETURNING id INTO :id
-      `;
-
-      const binds = {
-        codigo: validatedData.codigo,
-        descricao: validatedData.descricao,
-        ativo: validatedData.ativo || 'S',
-        id: { dir: 3003, type: 2001 } // OUT parameter
-      };
-
-      const result = await executeUpdate(sql, binds);
-
-      res.status(201).json({
-        message: "Contrato criado com sucesso",
-        id: result.outBinds?.id,
-        data: {
-          id: result.outBinds?.id,
-          ...validatedData,
-          ativo: validatedData.ativo || 'S'
-        }
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          error: "Dados inválidos",
-          details: error.errors
-        });
-      }
-
-      console.error('Erro ao criar contrato:', error);
-      res.status(500).json({
-        error: "Erro ao criar contrato",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
-    }
-  });
-
-  // Atualizar contrato existente
-  app.put("/api/contratos/:id", async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-
-      if (isNaN(id)) {
-        return res.status(400).json({
-          error: "ID inválido",
-          message: "O ID deve ser um número válido"
-        });
-      }
-
-      const validatedData = updateContratoSchema.parse(req.body);
-
-      // Construir SQL dinamicamente baseado nos campos fornecidos
-      const updates: string[] = [];
-      const binds: any = { id };
-
-      if (validatedData.codigo !== undefined) {
-        updates.push('codigo = :codigo');
-        binds.codigo = validatedData.codigo;
-      }
-
-      if (validatedData.descricao !== undefined) {
-        updates.push('descricao = :descricao');
-        binds.descricao = validatedData.descricao;
-      }
-
-      if (validatedData.ativo !== undefined) {
-        updates.push('ativo = :ativo');
-        binds.ativo = validatedData.ativo;
-      }
-
-      if (updates.length === 0) {
-        return res.status(400).json({
-          error: "Nenhum campo para atualizar",
-          message: "Forneça pelo menos um campo para atualizar"
-        });
-      }
-
-      const sql = `UPDATE contratos SET ${updates.join(', ')} WHERE id = :id`;
-      const result = await executeUpdate(sql, binds);
-
-      if (result.rowsAffected && result.rowsAffected > 0) {
-        res.json({
-          message: "Contrato atualizado com sucesso",
-          rowsAffected: result.rowsAffected,
-          data: {
-            id,
-            ...validatedData
-          }
-        });
-      } else {
-        res.status(404).json({
-          error: "Contrato não encontrado",
-          message: `Nenhum contrato encontrado com ID ${id}`
-        });
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          error: "Dados inválidos",
-          details: error.errors
-        });
-      }
-
-      console.error('Erro ao atualizar contrato:', error);
-      res.status(500).json({
-        error: "Erro ao atualizar contrato",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
-    }
-  });
-
-  // Deletar contrato
-  app.delete("/api/contratos/:id", async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-
-      if (isNaN(id)) {
-        return res.status(400).json({
-          error: "ID inválido",
-          message: "O ID deve ser um número válido"
-        });
-      }
-
-      const sql = 'DELETE FROM contratos WHERE id = :id';
-      const result = await executeUpdate(sql, { id });
-
-      if (result.rowsAffected && result.rowsAffected > 0) {
-        res.json({
-          message: "Contrato deletado com sucesso",
-          rowsAffected: result.rowsAffected
-        });
-      } else {
-        res.status(404).json({
-          error: "Contrato não encontrado",
-          message: `Nenhum contrato encontrado com ID ${id}`
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao deletar contrato:', error);
-      res.status(500).json({
-        error: "Erro ao deletar contrato",
         message: error instanceof Error ? error.message : "Erro desconhecido"
       });
     }
@@ -953,12 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "PUT", path: "/api/pacientes/:id", description: "Atualizar paciente existente" },
         { method: "DELETE", path: "/api/pacientes/:id", description: "Deletar paciente" },
         { method: "GET", path: "/api/estatisticas", description: "Obter estatísticas gerais" },
-        { method: "GET", path: "/api/contratos", description: "Listar contratos" },
-        { method: "GET", path: "/api/contratos/:id", description: "Obter contrato por ID" },
-        { method: "GET", path: "/api/contratos/codigo/:codigo", description: "Obter contrato por código" },
-        { method: "POST", path: "/api/contratos", description: "Criar novo contrato" },
-        { method: "PUT", path: "/api/contratos/:id", description: "Atualizar contrato existente" },
-        { method: "DELETE", path: "/api/contratos/:id", description: "Deletar contrato" },
+        { method: "GET", path: "/api/contratos", description: "Listar contratos (pls_contrato)" },
+        { method: "GET", path: "/api/contratos/:nrContrato", description: "Buscar contrato por número" },
       ]
     });
   });
