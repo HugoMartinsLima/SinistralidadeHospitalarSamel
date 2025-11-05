@@ -9,10 +9,13 @@ Esta API foi desenvolvida para servir como backend para uma aplicação de sinis
 ## 🏗️ Arquitetura
 
 - **Backend**: Node.js + Express
-- **Banco de Dados**: Oracle Database
+- **Banco de Dados**: Oracle Database (192.168.2.15 - rede privada)
 - **Driver Oracle**: oracledb (driver oficial Oracle para Node.js)
 - **CORS**: Configurado para aceitar requisições de qualquer origem
 - **Pool de Conexões**: Gerenciamento eficiente de conexões com Oracle
+- **Ambiente**: Aplicação roda localmente no Windows (Oracle em rede privada)
+- **Exposição Externa**: Ngrok para expor API local via HTTPS
+- **Isolamento de Rotas**: Sub-app Express separa rotas `/api` do middleware Vite
 
 ## 🔌 Configuração
 
@@ -27,6 +30,20 @@ As seguintes variáveis de ambiente devem estar configuradas no Replit Secrets:
 - `ORACLE_SERVICE`: Nome do serviço Oracle
 
 **Nota**: Nunca exponha credenciais reais em código ou documentação. Use sempre o sistema de Secrets do Replit.
+
+### Executando a Aplicação
+
+**⚠️ IMPORTANTE: Use `npm run dev` para desenvolvimento!**
+
+```bash
+# ✅ CORRETO - Desenvolvimento (Windows/local)
+npm run dev
+
+# ❌ ERRADO - Produção (requer compilação)
+npm start
+```
+
+O comando `npm run dev` usa `tsx` para executar TypeScript diretamente sem precisar compilar.
 
 ## 📡 Endpoints da API
 
@@ -248,6 +265,83 @@ GET /api
 ```
 
 Retorna informações sobre a API e lista de endpoints disponíveis.
+
+### 14. Endpoint de Teste - Contratos
+```
+GET /api/contratos-teste
+```
+
+**⚠️ Endpoint de desenvolvimento** - Retorna dados fixos de contratos sem consultar o Oracle.
+
+Útil para:
+- Testar a conectividade da API sem depender do banco de dados
+- Validar integração com frontend antes de conectar ao Oracle
+- Desenvolvimento e testes quando o Oracle não está disponível
+
+**Resposta:**
+```json
+{
+  "data": [
+    {
+      "nrContrato": 1270,
+      "cdCgcEstipulante": "04347163000148",
+      "dsEstipulante": "MOTO HONDA DA AMAZONIA LTDA"
+    },
+    {
+      "nrContrato": 2444,
+      "cdCgcEstipulante": "08281892000158",
+      "dsEstipulante": "2E DESPACHOS ADUANEIROS LTDA"
+    },
+    {
+      "nrContrato": 3501,
+      "cdCgcEstipulante": "12345678000190",
+      "dsEstipulante": "EMPRESA TESTE LTDA"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "total": 3
+  }
+}
+```
+
+## 🔧 Troubleshooting
+
+### Problema: API retorna 404 no navegador mas 200 no console
+
+**Sintoma:**
+- Console do servidor mostra: `GET /api/contratos 200 in 3ms`
+- Navegador/Postman recebe: `404 Not Found`
+
+**Causa:**
+O middleware do Vite (desenvolvimento) intercepta todas as rotas com `app.use("*")`, tentando servir HTML do frontend para rotas da API.
+
+**Solução Aplicada:**
+Criamos um sub-app Express separado (`clientApp`) para isolar o Vite das rotas `/api`:
+
+```typescript
+// server/index.ts
+const clientApp = express();
+
+// Vite configurado no sub-app
+if (app.get("env") === "development") {
+  await setupVite(clientApp, server);
+}
+
+// Middleware que separa rotas /api do Vite
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api") || req.originalUrl.startsWith("/api")) {
+    return next(); // Rotas /api seguem para handlers da API
+  }
+  clientApp(req, res, next); // Outras rotas vão para Vite/frontend
+});
+```
+
+**Resultado:**
+- ✅ Rotas `/api/*` processam corretamente e retornam JSON
+- ✅ Rotas do frontend continuam funcionando com Vite
+- ✅ Separação limpa entre API e frontend
 
 ## 🌐 Usando a API no Lovable
 
