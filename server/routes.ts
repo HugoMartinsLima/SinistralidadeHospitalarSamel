@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { executeQuery, testConnection, initializePool } from "./oracle-db";
+import { executeQuery, executeUpdate, testConnection, initializePool } from "./oracle-db";
 import type { Sinistro, Paciente, Estatisticas, FiltroSinistros } from "@shared/schema";
-import { filtroSinistrosSchema } from "@shared/schema";
+import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -288,6 +288,369 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Criar novo sinistro
+  app.post("/api/sinistros", async (req, res) => {
+    try {
+      const data = insertSinistroSchema.parse(req.body);
+
+      const sql = `
+        INSERT INTO sinistros (
+          id, numero_sinistro, paciente_id, data_ocorrencia, data_registro, 
+          status, valor_total, tipo_sinistro, descricao, hospital
+        ) VALUES (
+          seq_sinistros.NEXTVAL, :numeroSinistro, :pacienteId, 
+          TO_DATE(:dataOcorrencia, 'YYYY-MM-DD'), SYSDATE, 
+          :status, :valorTotal, :tipoSinistro, :descricao, :hospital
+        ) RETURNING id INTO :id
+      `;
+
+      const binds = {
+        numeroSinistro: data.numeroSinistro,
+        pacienteId: data.pacienteId,
+        dataOcorrencia: data.dataOcorrencia,
+        status: data.status,
+        valorTotal: data.valorTotal,
+        tipoSinistro: data.tipoSinistro,
+        descricao: data.descricao ?? null,
+        hospital: data.hospital ?? null,
+        id: { dir: 3003, type: 2002 }, // OUT parameter
+      };
+
+      const result = await executeUpdate(sql, binds);
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        const newId = result.outBinds?.id;
+        res.status(201).json({
+          message: "Sinistro criado com sucesso",
+          id: newId
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao criar sinistro",
+          message: "Nenhuma linha foi afetada"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao criar sinistro:', error);
+      
+      // Distinguir erros de validação de erros de banco de dados
+      if (error && typeof error === 'object' && 'issues' in error) {
+        // Erro Zod
+        res.status(400).json({
+          error: "Erro de validação",
+          message: error instanceof Error ? error.message : "Dados inválidos",
+          details: 'issues' in error ? error.issues : undefined
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao criar sinistro",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
+    }
+  });
+
+  // Atualizar sinistro existente
+  app.put("/api/sinistros/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({
+          error: "ID inválido",
+          message: "O ID deve ser um número válido"
+        });
+      }
+
+      const data = updateSinistroSchema.parse(req.body);
+
+      // Construir SQL dinâmico baseado nos campos fornecidos
+      const updates: string[] = [];
+      const binds: any = { id };
+
+      if (data.numeroSinistro !== undefined) {
+        updates.push('numero_sinistro = :numeroSinistro');
+        binds.numeroSinistro = data.numeroSinistro;
+      }
+      if (data.pacienteId !== undefined) {
+        updates.push('paciente_id = :pacienteId');
+        binds.pacienteId = data.pacienteId;
+      }
+      if (data.dataOcorrencia !== undefined) {
+        updates.push('data_ocorrencia = TO_DATE(:dataOcorrencia, \'YYYY-MM-DD\')');
+        binds.dataOcorrencia = data.dataOcorrencia;
+      }
+      if (data.status !== undefined) {
+        updates.push('status = :status');
+        binds.status = data.status;
+      }
+      if (data.valorTotal !== undefined) {
+        updates.push('valor_total = :valorTotal');
+        binds.valorTotal = data.valorTotal;
+      }
+      if (data.tipoSinistro !== undefined) {
+        updates.push('tipo_sinistro = :tipoSinistro');
+        binds.tipoSinistro = data.tipoSinistro;
+      }
+      if (data.descricao !== undefined) {
+        updates.push('descricao = :descricao');
+        binds.descricao = data.descricao;
+      }
+      if (data.hospital !== undefined) {
+        updates.push('hospital = :hospital');
+        binds.hospital = data.hospital;
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          error: "Nenhum campo para atualizar",
+          message: "Forneça pelo menos um campo para atualizar"
+        });
+      }
+
+      const sql = `UPDATE sinistros SET ${updates.join(', ')} WHERE id = :id`;
+      const result = await executeUpdate(sql, binds);
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        res.json({
+          message: "Sinistro atualizado com sucesso",
+          rowsAffected: result.rowsAffected
+        });
+      } else {
+        res.status(404).json({
+          error: "Sinistro não encontrado",
+          message: `Nenhum sinistro encontrado com ID ${id}`
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar sinistro:', error);
+      
+      // Distinguir erros de validação de erros de banco de dados
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({
+          error: "Erro de validação",
+          message: error instanceof Error ? error.message : "Dados inválidos"
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao atualizar sinistro",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
+    }
+  });
+
+  // Deletar sinistro
+  app.delete("/api/sinistros/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({
+          error: "ID inválido",
+          message: "O ID deve ser um número válido"
+        });
+      }
+
+      const sql = 'DELETE FROM sinistros WHERE id = :id';
+      const result = await executeUpdate(sql, { id });
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        res.json({
+          message: "Sinistro deletado com sucesso",
+          rowsAffected: result.rowsAffected
+        });
+      } else {
+        res.status(404).json({
+          error: "Sinistro não encontrado",
+          message: `Nenhum sinistro encontrado com ID ${id}`
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao deletar sinistro:', error);
+      res.status(500).json({
+        error: "Erro ao deletar sinistro",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // Criar novo paciente
+  app.post("/api/pacientes", async (req, res) => {
+    try {
+      const data = insertPacienteSchema.parse(req.body);
+
+      const sql = `
+        INSERT INTO pacientes (
+          id, nome, cpf, data_nascimento, plano, numero_carteirinha, telefone, email
+        ) VALUES (
+          seq_pacientes.NEXTVAL, :nome, :cpf, TO_DATE(:dataNascimento, 'YYYY-MM-DD'),
+          :plano, :numeroCarteirinha, :telefone, :email
+        ) RETURNING id INTO :id
+      `;
+
+      const binds = {
+        nome: data.nome,
+        cpf: data.cpf,
+        dataNascimento: data.dataNascimento,
+        plano: data.plano,
+        numeroCarteirinha: data.numeroCarteirinha,
+        telefone: data.telefone ?? null,
+        email: data.email ?? null,
+        id: { dir: 3003, type: 2002 }, // OUT parameter
+      };
+
+      const result = await executeUpdate(sql, binds);
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        const newId = result.outBinds?.id;
+        res.status(201).json({
+          message: "Paciente criado com sucesso",
+          id: newId
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao criar paciente",
+          message: "Nenhuma linha foi afetada"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao criar paciente:', error);
+      
+      // Distinguir erros de validação de erros de banco de dados
+      if (error && typeof error === 'object' && 'issues' in error) {
+        // Erro Zod
+        res.status(400).json({
+          error: "Erro de validação",
+          message: error instanceof Error ? error.message : "Dados inválidos",
+          details: 'issues' in error ? error.issues : undefined
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao criar paciente",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
+    }
+  });
+
+  // Atualizar paciente existente
+  app.put("/api/pacientes/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({
+          error: "ID inválido",
+          message: "O ID deve ser um número válido"
+        });
+      }
+
+      const data = updatePacienteSchema.parse(req.body);
+
+      // Construir SQL dinâmico baseado nos campos fornecidos
+      const updates: string[] = [];
+      const binds: any = { id };
+
+      if (data.nome !== undefined) {
+        updates.push('nome = :nome');
+        binds.nome = data.nome;
+      }
+      if (data.cpf !== undefined) {
+        updates.push('cpf = :cpf');
+        binds.cpf = data.cpf;
+      }
+      if (data.dataNascimento !== undefined) {
+        updates.push('data_nascimento = TO_DATE(:dataNascimento, \'YYYY-MM-DD\')');
+        binds.dataNascimento = data.dataNascimento;
+      }
+      if (data.plano !== undefined) {
+        updates.push('plano = :plano');
+        binds.plano = data.plano;
+      }
+      if (data.numeroCarteirinha !== undefined) {
+        updates.push('numero_carteirinha = :numeroCarteirinha');
+        binds.numeroCarteirinha = data.numeroCarteirinha;
+      }
+      if (data.telefone !== undefined) {
+        updates.push('telefone = :telefone');
+        binds.telefone = data.telefone;
+      }
+      if (data.email !== undefined) {
+        updates.push('email = :email');
+        binds.email = data.email;
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          error: "Nenhum campo para atualizar",
+          message: "Forneça pelo menos um campo para atualizar"
+        });
+      }
+
+      const sql = `UPDATE pacientes SET ${updates.join(', ')} WHERE id = :id`;
+      const result = await executeUpdate(sql, binds);
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        res.json({
+          message: "Paciente atualizado com sucesso",
+          rowsAffected: result.rowsAffected
+        });
+      } else {
+        res.status(404).json({
+          error: "Paciente não encontrado",
+          message: `Nenhum paciente encontrado com ID ${id}`
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar paciente:', error);
+      
+      // Distinguir erros de validação de erros de banco de dados
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({
+          error: "Erro de validação",
+          message: error instanceof Error ? error.message : "Dados inválidos"
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao atualizar paciente",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
+    }
+  });
+
+  // Deletar paciente
+  app.delete("/api/pacientes/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({
+          error: "ID inválido",
+          message: "O ID deve ser um número válido"
+        });
+      }
+
+      const sql = 'DELETE FROM pacientes WHERE id = :id';
+      const result = await executeUpdate(sql, { id });
+
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        res.json({
+          message: "Paciente deletado com sucesso",
+          rowsAffected: result.rowsAffected
+        });
+      } else {
+        res.status(404).json({
+          error: "Paciente não encontrado",
+          message: `Nenhum paciente encontrado com ID ${id}`
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao deletar paciente:', error);
+      res.status(500).json({
+        error: "Erro ao deletar paciente",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -298,8 +661,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/health", description: "Verificar status da API e conexão com Oracle" },
         { method: "GET", path: "/api/sinistros", description: "Listar sinistros com filtros opcionais" },
         { method: "GET", path: "/api/sinistros/:id", description: "Obter detalhes de um sinistro" },
+        { method: "POST", path: "/api/sinistros", description: "Criar novo sinistro" },
+        { method: "PUT", path: "/api/sinistros/:id", description: "Atualizar sinistro existente" },
+        { method: "DELETE", path: "/api/sinistros/:id", description: "Deletar sinistro" },
         { method: "GET", path: "/api/pacientes", description: "Listar pacientes" },
         { method: "GET", path: "/api/pacientes/:id", description: "Obter detalhes de um paciente" },
+        { method: "POST", path: "/api/pacientes", description: "Criar novo paciente" },
+        { method: "PUT", path: "/api/pacientes/:id", description: "Atualizar paciente existente" },
+        { method: "DELETE", path: "/api/pacientes/:id", description: "Deletar paciente" },
         { method: "GET", path: "/api/estatisticas", description: "Obter estatísticas gerais" },
       ]
     });

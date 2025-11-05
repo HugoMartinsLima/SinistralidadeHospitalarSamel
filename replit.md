@@ -18,13 +18,15 @@ Esta API foi desenvolvida para servir como backend para uma aplicação de sinis
 
 ### Variáveis de Ambiente (Secrets)
 
-As seguintes variáveis de ambiente estão configuradas no Replit Secrets:
+As seguintes variáveis de ambiente devem estar configuradas no Replit Secrets:
 
-- `ORACLE_HOST`: 192.168.2.15
-- `ORACLE_PORT`: 1521
-- `ORACLE_USER`: tasy
-- `ORACLE_PASSWORD`: PrdAdm2021ts!
-- `ORACLE_SERVICE`: outros.sameldm.com
+- `ORACLE_HOST`: Endereço IP ou hostname do servidor Oracle
+- `ORACLE_PORT`: Porta do Oracle (geralmente 1521)
+- `ORACLE_USER`: Usuário do banco de dados
+- `ORACLE_PASSWORD`: Senha do usuário
+- `ORACLE_SERVICE`: Nome do serviço Oracle
+
+**Nota**: Nunca exponha credenciais reais em código ou documentação. Use sempre o sistema de Secrets do Replit.
 
 ## 📡 Endpoints da API
 

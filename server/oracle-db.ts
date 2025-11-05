@@ -94,6 +94,36 @@ export async function executeQuery<T = any>(
   }
 }
 
+// Executar comando de modificação (INSERT, UPDATE, DELETE) com transação
+export async function executeUpdate(
+  sql: string,
+  binds: any = {},
+  options: oracledb.ExecuteOptions = {}
+): Promise<oracledb.Result<any>> {
+  let connection;
+  try {
+    connection = await getConnection();
+    const result = await connection.execute(sql, binds, {
+      autoCommit: true, // Commit automático
+      ...options,
+    });
+    return result;
+  } catch (err) {
+    console.error('❌ Erro ao executar comando de modificação:', err);
+    console.error('SQL:', sql);
+    console.error('Binds:', binds);
+    throw err;
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('❌ Erro ao fechar conexão:', err);
+      }
+    }
+  }
+}
+
 // Verificar conexão com o banco
 export async function testConnection(): Promise<boolean> {
   try {
