@@ -1,6 +1,33 @@
+# Dependências
 node_modules
+npm-debug.log*
+yarn-debug.log*
+
+# Build
 dist
-.DS_Store
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Variáveis de ambiente (CRÍTICO - nunca commite!)
+.env
+.env.local
+.env.*.local
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Replit (se rodar localmente)
+.replit
+.breakpoints
+replit.nix
