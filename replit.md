@@ -148,7 +148,84 @@ GET /api/pacientes/:id
 GET /api/pacientes/123
 ```
 
-### 6. Estatísticas Gerais
+### 6. Criar Sinistro
+```
+POST /api/sinistros
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "numeroSinistro": "SIN-2025-001",
+  "pacienteId": 123,
+  "dataOcorrencia": "2025-01-15",
+  "status": "PENDENTE",
+  "valorTotal": 5000.00,
+  "tipoSinistro": "CONSULTA",
+  "descricao": "Consulta cardiológica (opcional)",
+  "hospital": "Hospital São Lucas (opcional)"
+}
+```
+
+### 7. Atualizar Sinistro
+```
+PUT /api/sinistros/:id
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "status": "APROVADO",
+  "valorTotal": 5500.00
+}
+```
+
+### 8. Deletar Sinistro
+```
+DELETE /api/sinistros/:id
+```
+
+### 9. Criar Paciente
+```
+POST /api/pacientes
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "nome": "João Silva",
+  "cpf": "123.456.789-00",
+  "dataNascimento": "1980-05-15",
+  "plano": "Premium",
+  "numeroCarteirinha": "123456789",
+  "telefone": "(11) 98765-4321 (opcional)",
+  "email": "joao.silva@email.com (opcional)"
+}
+```
+
+### 10. Atualizar Paciente
+```
+PUT /api/pacientes/:id
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "telefone": "(11) 91234-5678",
+  "email": "novo.email@email.com"
+}
+```
+
+### 11. Deletar Paciente
+```
+DELETE /api/pacientes/:id
+```
+
+### 12. Estatísticas Gerais
 ```
 GET /api/estatisticas
 ```
@@ -165,7 +242,7 @@ GET /api/estatisticas
 }
 ```
 
-### 7. Informações da API
+### 13. Informações da API
 ```
 GET /api
 ```
@@ -210,6 +287,34 @@ async function buscarPacientes(search: string) {
   );
   const data = await response.json();
   return data;
+}
+
+// Exemplo: Criar novo sinistro
+async function criarSinistro(sinistro: any) {
+  const response = await fetch(`${API_BASE_URL}/api/sinistros`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sinistro)
+  });
+  return await response.json();
+}
+
+// Exemplo: Atualizar sinistro
+async function atualizarSinistro(id: number, dados: any) {
+  const response = await fetch(`${API_BASE_URL}/api/sinistros/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+  return await response.json();
+}
+
+// Exemplo: Deletar sinistro
+async function deletarSinistro(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/sinistros/${id}`, {
+    method: 'DELETE'
+  });
+  return await response.json();
 }
 ```
 
@@ -259,11 +364,15 @@ A API espera as seguintes tabelas no banco Oracle:
 
 ## 📝 Notas Importantes
 
-- A API usa CORS configurado para aceitar requisições de qualquer origem
-- O pool de conexões Oracle está configurado com mínimo de 2 e máximo de 10 conexões
-- Todas as datas são retornadas no formato ISO (YYYY-MM-DD)
-- Os erros retornam status HTTP apropriados (404, 500, etc.)
-- A API loga automaticamente todas as requisições para `/api/*`
+- ✅ **CRUD Completo**: API REST com todos endpoints CREATE, READ, UPDATE e DELETE implementados
+- ✅ **Validação**: Usa Zod para validação de dados com mensagens de erro apropriadas
+- ✅ **Códigos HTTP**: Erros de validação retornam 400, erros de banco/servidor retornam 500
+- ✅ **Campos Opcionais**: Campos opcionais (descricao, hospital, telefone, email) são tratados corretamente
+- ✅ **CORS**: Configurado para aceitar requisições de qualquer origem
+- ✅ **Pool de Conexões**: Oracle configurado com mínimo de 2 e máximo de 10 conexões
+- ✅ **Formato de Datas**: Todas as datas são retornadas no formato ISO (YYYY-MM-DD)
+- ✅ **Logs**: A API loga automaticamente todas as requisições para `/api/*`
+- ✅ **Segurança**: Credenciais armazenadas em Replit Secrets (nunca em código)
 
 ## 🔧 Desenvolvimento
 
