@@ -1,0 +1,88 @@
+Crie uma tela de listagem de contratos com as seguintes especificações:
+
+## Dados da API
+
+Conectar à API REST:
+- URL base: https://unhalted-tanja-unvinous.ngrok-free.dev
+- Endpoint: GET /api/contratos
+- IMPORTANTE: Adicionar header 'ngrok-skip-browser-warning': 'true' em todas as requisições
+
+## Estrutura dos Dados
+
+A API retorna:
+{
+  "data": [
+    {
+      "nrContrato": 1270,
+      "cdCgcEstipulante": "04347163000148",
+      "dsEstipulante": "MOTO HONDA DA AMAZONIA LTDA"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "total": 150
+  }
+}
+
+## Interface Desejada
+
+1. Campo de Busca no Topo:
+   - Placeholder: "Buscar empresa..."
+   - Busca em tempo real (debounce de 300ms)
+   - Pesquisa por número do contrato OU nome da empresa
+   - Ícone de lupa dentro do campo
+
+2. Lista de Contratos:
+   - Mostrar todos os contratos em uma lista ou tabela
+   - Colunas: Número do Contrato (nrContrato) e Nome da Empresa (dsEstipulante)
+   - Ordenar alfabeticamente por nome da empresa
+   - Design limpo e moderno
+   - Efeito hover nos itens da lista
+
+3. Estados da Interface:
+   - Loading: Mostrar skeleton/spinner enquanto carrega
+   - Vazio: "Nenhum contrato encontrado" quando não há resultados
+   - Erro: Mensagem amigável se a API falhar
+
+4. Funcionalidades:
+   - Ao digitar no campo de busca, enviar query parameter ?search=texto para a API
+   - A API já faz o filtro no backend
+   - Exemplo: https://unhalted-tanja-unvinous.ngrok-free.dev/api/contratos?search=honda
+
+## Exemplo de Código React:
+
+const [searchTerm, setSearchTerm] = useState('');
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ['/api/contratos', searchTerm],
+  queryFn: async () => {
+    const url = searchTerm 
+      ? `https://unhalted-tanja-unvinous.ngrok-free.dev/api/contratos?search=${searchTerm}`
+      : 'https://unhalted-tanja-unvinous.ngrok-free.dev/api/contratos';
+    
+    const response = await fetch(url, {
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
+    
+    if (!response.ok) throw new Error('Erro ao buscar contratos');
+    return response.json();
+  }
+});
+
+## Design
+
+- Use componentes shadcn/ui (Input, Card, Table)
+- Cores: Tema moderno e profissional
+- Responsivo: Desktop e mobile
+- Acessibilidade: Labels corretos, navegação por teclado
+
+## Comportamento da Busca
+
+- Debounce de 300ms antes de chamar a API
+- Limpar busca mostra todos os contratos
+- Mensagem quando não encontrar: "Nenhuma empresa encontrada para '{termo}'"
+
+Implemente essa tela completa com boa experiência de usuário.
