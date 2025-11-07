@@ -1,0 +1,77 @@
+===========================================
+🚀 RESUMO RÁPIDO: Git + GitHub
+===========================================
+
+📁 PRIMEIRA VEZ (Subir projeto para GitHub):
+
+1. Criar repositório no GitHub
+   → https://github.com → New repository
+   → Nome: sinistralidade-hospitalar
+   → Visibility: Private
+   → NÃO marcar "Add README"
+   → Copiar URL: https://github.com/seu-usuario/sinistralidade-hospitalar.git
+
+2. No Windows (Git Bash ou CMD):
+   cd C:\Users\Mateus\Desktop\SinistralidadeHospitalar
+   git init
+   git add .
+   git commit -m "Initial commit: API de sinistralidade hospitalar"
+   git branch -M main
+   git remote add origin https://github.com/seu-usuario/sinistralidade-hospitalar.git
+   git push -u origin main
+
+3. Quando pedir senha:
+   → Username: seu-usuario-github
+   → Password: [COLE O TOKEN - não a senha!]
+   
+   Como criar token:
+   GitHub → Settings → Developer settings → Personal access tokens
+   → Generate new token → Marcar "repo" → Generate
+   → COPIAR TOKEN (não aparece novamente!)
+
+===========================================
+
+🔄 DIA A DIA (Salvar alterações):
+
+# Ver o que mudou
+git status
+
+# Adicionar tudo
+git add .
+
+# Salvar com mensagem
+git commit -m "Descrição do que mudou"
+
+# Enviar para GitHub
+git push origin main
+
+===========================================
+
+⬇️ BAIXAR ALTERAÇÕES (de outro PC):
+
+git pull origin main
+
+===========================================
+
+✅ O QUE JÁ ESTÁ PRONTO NO SEU PROJETO:
+
+✓ .gitignore configurado (não sobe .env, node_modules)
+✓ Estrutura do projeto organizada
+✓ Documentação completa (replit.md)
+
+===========================================
+
+⚠️ NUNCA SUBA PARA O GITHUB:
+
+✗ Arquivo .env (senhas do Oracle!)
+✗ node_modules/ (muito grande)
+✗ Senhas, tokens, credenciais
+
+===========================================
+
+📚 GUIA COMPLETO:
+
+Leia o arquivo: GUIA_GIT_GITHUB.md
+(Passo a passo detalhado com prints e troubleshooting)
+
+===========================================
