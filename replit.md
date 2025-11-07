@@ -306,6 +306,63 @@ GET /api/contratos-teste
 }
 ```
 
+### 15. Grupos de Receita
+```
+GET /api/grupos-receita
+```
+
+Retorna a lista de grupos de receita ativos do sistema hospitalar.
+
+**Resposta:**
+```json
+{
+  "data": [
+    { "dsGrupoReceita": "Análises Clínicas" },
+    { "dsGrupoReceita": "Cirúrgico" },
+    { "dsGrupoReceita": "Consultas Eletivas" },
+    { "dsGrupoReceita": "Diárias de UTI's" },
+    { "dsGrupoReceita": "Exames de Imagem" },
+    { "dsGrupoReceita": "Oncologia" },
+    { "dsGrupoReceita": "Pronto Atendimento" },
+    { "dsGrupoReceita": "Terapias Clínicas" }
+  ],
+  "total": 8
+}
+```
+
+**SQL Executado:**
+```sql
+SELECT DS_GRUPO_RECEITA as "dsGrupoReceita"
+FROM GRUPO_RECEITA
+WHERE 1=1
+AND IE_SITUACAO = 'A'
+ORDER BY DS_GRUPO_RECEITA ASC
+```
+
+**Uso no Lovable (Dropdown):**
+```typescript
+const { data: grupos } = useQuery({
+  queryKey: ['/api/grupos-receita'],
+  queryFn: async () => {
+    const response = await fetch('https://sua-url.ngrok-free.dev/api/grupos-receita', {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
+    const result = await response.json();
+    return result.data;
+  }
+});
+
+// Popular dropdown
+<Select>
+  <SelectItem value="todas">Todas</SelectItem>
+  {grupos?.map(g => (
+    <SelectItem key={g.dsGrupoReceita} value={g.dsGrupoReceita}>
+      {g.dsGrupoReceita}
+    </SelectItem>
+  ))}
+</Select>
+```
+
 ## 🔧 Troubleshooting
 
 ### Problema: API retorna 404 no navegador mas 200 no console

@@ -797,6 +797,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // ENDPOINTS DE GRUPOS DE RECEITA
+  // ============================================
+
+  // Listar grupos de receita ativos
+  app.get("/api/grupos-receita", async (req, res) => {
+    try {
+      const sql = `
+        SELECT DS_GRUPO_RECEITA as "dsGrupoReceita"
+        FROM GRUPO_RECEITA
+        WHERE 1=1
+        AND IE_SITUACAO = 'A'
+        ORDER BY DS_GRUPO_RECEITA ASC
+      `;
+
+      const gruposReceita = await executeQuery<{ dsGrupoReceita: string }>(sql);
+
+      res.json({
+        data: gruposReceita,
+        total: gruposReceita.length
+      });
+    } catch (error) {
+      console.error('Erro ao buscar grupos de receita:', error);
+      res.status(500).json({
+        error: "Erro ao buscar grupos de receita",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -818,6 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/estatisticas", description: "Obter estatísticas gerais" },
         { method: "GET", path: "/api/contratos", description: "Listar contratos (pls_contrato)" },
         { method: "GET", path: "/api/contratos/:nrContrato", description: "Buscar contrato por número" },
+        { method: "GET", path: "/api/grupos-receita", description: "Listar grupos de receita ativos" },
       ]
     });
   });

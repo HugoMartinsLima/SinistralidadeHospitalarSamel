@@ -1,0 +1,91 @@
+===========================================
+✅ ENDPOINT CRIADO: Grupos de Receita
+===========================================
+
+📊 NOVO ENDPOINT:
+GET /api/grupos-receita
+
+Retorna os grupos de receita ativos do Oracle (tabela GRUPO_RECEITA)
+
+===========================================
+
+🔗 URL COMPLETA:
+https://unhalted-tanja-unvinous.ngrok-free.dev/api/grupos-receita
+
+===========================================
+
+📤 EXEMPLO DE RESPOSTA:
+{
+  "data": [
+    { "dsGrupoReceita": "Análises Clínicas" },
+    { "dsGrupoReceita": "Cirúrgico" },
+    { "dsGrupoReceita": "Consultas Eletivas" },
+    { "dsGrupoReceita": "Diárias de UTI's" },
+    { "dsGrupoReceita": "Exames de Imagem" },
+    { "dsGrupoReceita": "Oncologia" },
+    { "dsGrupoReceita": "Pronto Atendimento" },
+    { "dsGrupoReceita": "Terapias Clínicas" }
+  ],
+  "total": 8
+}
+
+===========================================
+
+💻 USAR NO LOVABLE:
+
+1. Abra o arquivo: PROMPT_LOVABLE_DROPDOWN_GRUPOS.md
+2. Copie o prompt completo
+3. Cole no Lovable
+4. O dropdown vai carregar os dados da API automaticamente
+
+===========================================
+
+🧪 TESTAR AGORA:
+
+1. Navegador:
+   https://unhalted-tanja-unvinous.ngrok-free.dev/api/grupos-receita
+
+2. cURL (CMD/PowerShell):
+   curl https://unhalted-tanja-unvinous.ngrok-free.dev/api/grupos-receita
+
+Deve retornar JSON com os grupos!
+
+===========================================
+
+📁 ARQUIVOS CRIADOS:
+
+✓ server/routes.ts - Endpoint adicionado
+✓ API_GRUPOS_RECEITA.md - Documentação completa
+✓ PROMPT_LOVABLE_DROPDOWN_GRUPOS.md - Prompt para usar no Lovable
+✓ replit.md - Atualizado com novo endpoint
+✓ RESUMO_GRUPOS_RECEITA.txt - Este arquivo
+
+===========================================
+
+✅ O QUE FOI FEITO:
+
+1. ✅ Criado endpoint GET /api/grupos-receita
+2. ✅ SQL busca apenas grupos ativos (IE_SITUACAO = 'A')
+3. ✅ Dados ordenados alfabeticamente
+4. ✅ CORS configurado
+5. ✅ Documentação completa
+6. ✅ Prompt pronto para Lovable
+
+===========================================
+
+🎯 PRÓXIMO PASSO:
+
+1. Abrir: PROMPT_LOVABLE_DROPDOWN_GRUPOS.md
+2. Copiar todo o conteúdo
+3. Colar no Lovable
+4. Pronto! O dropdown vai funcionar com dados reais do Oracle
+
+===========================================
+
+⚠️ LEMBRE-SE:
+
+- Header obrigatório: 'ngrok-skip-browser-warning': 'true'
+- URL do Ngrok muda quando reinicia
+- Sempre testar endpoint primeiro no navegador
+
+===========================================
