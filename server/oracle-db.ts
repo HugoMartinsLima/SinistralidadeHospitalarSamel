@@ -47,11 +47,29 @@ export async function getConnection() {
     
     // Configurar collation para match com SQL Developer
     // Isso garante que DISTINCT não remova linhas com diferenças de acentuação
-    await connection.execute(
-      `ALTER SESSION SET NLS_COMP=ANSI NLS_SORT=BINARY`,
-      [],
-      { autoCommit: false }
-    );
+    try {
+      await connection.execute(
+        `ALTER SESSION SET NLS_COMP=ANSI`,
+        [],
+        { autoCommit: false }
+      );
+      await connection.execute(
+        `ALTER SESSION SET NLS_SORT=BINARY`,
+        [],
+        { autoCommit: false }
+      );
+      console.log('✅ Collation configurada: NLS_COMP=ANSI, NLS_SORT=BINARY');
+      
+      // Verificar a configuração
+      const result = await connection.execute(
+        `SELECT PARAMETER, VALUE FROM NLS_SESSION_PARAMETERS WHERE PARAMETER IN ('NLS_COMP', 'NLS_SORT')`,
+        [],
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      console.log('🔍 Configuração NLS atual:', result.rows);
+    } catch (nlsErr) {
+      console.error('⚠️  Erro ao configurar NLS (continuando):', nlsErr);
+    }
     
     return connection;
   } catch (err) {
