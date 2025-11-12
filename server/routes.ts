@@ -871,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dataInicio: req.query.dataInicio || '01/10/2025',
         dataFim: req.query.dataFim || '31/10/2025',
         grupoReceita: req.query.grupoReceita as string | undefined,
-        limit: req.query.limit ? Number(req.query.limit) : 100,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
         offset: req.query.offset ? Number(req.query.offset) : 0,
       });
 
@@ -881,7 +881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         data: resultados,
         pagination: {
-          limit: filtros.limit,
+          limit: filtros.limit || resultados.length,
           offset: filtros.offset,
           total: resultados.length,
         },

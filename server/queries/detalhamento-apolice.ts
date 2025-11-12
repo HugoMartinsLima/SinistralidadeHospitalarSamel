@@ -87,20 +87,28 @@ export async function getDetalhamentoApolice(
   // Executar query
   const resultados = await executeQuery<DetalhamentoApoliceResult>(sql, binds);
   
+  console.log(`📊 Detalhamento - Total de registros do Oracle: ${resultados.length}`);
+  console.log(`📊 Parâmetros - limit: ${params.limit}, offset: ${params.offset}, grupoReceita: ${params.grupoReceita}`);
+  
   // Filtrar por grupo de receita se fornecido
   let filtered = resultados;
   if (params.grupoReceita && params.grupoReceita.toUpperCase() !== 'TODAS') {
     filtered = resultados.filter(
       r => r.gruporeceita?.toUpperCase() === params.grupoReceita?.toUpperCase()
     );
+    console.log(`📊 Após filtro de grupo receita: ${filtered.length} registros`);
   }
 
-  // Aplicar paginação se fornecida
-  if (params.limit !== undefined && params.offset !== undefined) {
-    const start = params.offset;
+  // Aplicar paginação (sempre que limit for fornecido)
+  // Se offset não for fornecido, usa 0 como padrão
+  if (params.limit !== undefined) {
+    const start = params.offset || 0;
     const end = start + params.limit;
     filtered = filtered.slice(start, end);
+    console.log(`📊 Após paginação (${start} a ${end}): ${filtered.length} registros`);
   }
 
+  console.log(`📊 Total retornado pela API: ${filtered.length} registros`);
+  
   return filtered;
 }
