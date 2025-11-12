@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { executeQuery } from '../oracle-db';
+
+// Obter __dirname em ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Cache do SQL (carregado uma vez na inicialização)
 let sqlDetalhamento: string | null = null;
