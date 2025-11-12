@@ -24,53 +24,29 @@ export interface DetalhamentoApoliceParams {
 
 /**
  * Interface para o resultado do detalhamento
+ * Aceita todas as colunas retornadas pelo SQL do Oracle
  */
 export interface DetalhamentoApoliceResult {
-  data: string;
-  hora: string;
+  // Permite qualquer coluna retornada pelo SQL
+  [key: string]: any;
+  
+  // Principais campos documentados (não limita a outros campos)
+  data?: string;
+  hora?: string;
   dataalta?: string;
   tipo_internacao?: string;
   carater_atendimento?: string;
   tipo_conta?: string;
   atendimento?: string;
-  autorizacao_original?: string;
-  tipo_validacao_clinica_externa?: string;
-  data_validacao_clinica_externa?: string;
-  dt_procedimento?: string;
-  cod_tuss?: string;
-  ie_origem_proced?: string;
-  evento_tuss?: string;
-  nr_seq_proc_interno?: number;
   nm_proced?: string;
   tiposervico?: string;
   gruporeceita?: string;
-  tipoconsulta?: string;
-  apolice?: number;
-  contratante?: string;
-  plano?: string;
-  cod_beneficiario?: string;
-  nome_paciente_prestador?: string;
   beneficiario?: string;
-  sexo?: string;
-  datanascimento?: string;
-  faixa_etaria?: string;
-  MAT_CLIENTE?: string;
-  tipodependente?: string;
-  titular?: string;
   prestador?: string;
   especialidade?: string;
-  qtde?: number;
   valor?: number;
   valortotal?: number;
-  setor_atendimento?: string;
-  SE_CONTINUIDADE?: string;
-  DT_CONTRATACAO?: string;
-  dt_contrato?: string;
-  dias_adesao?: number;
   cid_doenca?: string;
-  sub_estipulante?: string;
-  forma_chegada?: string;
-  vl_procedimento_coparticipacao?: number;
 }
 
 /**
