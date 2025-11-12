@@ -61,7 +61,7 @@ function loadSQL(): string {
     sqlDetalhamento = sqlDetalhamento
       .replace(/TO_DATE\('01\/10\/2025'/g, "TO_DATE(:dataInicio")
       .replace(/TO_DATE\('31\/10\/2025'/g, "TO_DATE(:dataFim")
-      .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato = :nrContrato");
+      .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato IN (:nrContrato)");
     
     console.log('✅ SQL de detalhamento de apólice carregado e parametrizado');
   }
