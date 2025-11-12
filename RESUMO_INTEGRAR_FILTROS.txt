@@ -1,0 +1,138 @@
+=============================================
+🔗 INTEGRAR FILTROS COM API DE DETALHAMENTO
+=============================================
+
+✅ ARQUIVO CRIADO:
+PROMPT_LOVABLE_INTEGRAR_FILTROS.md
+
+=============================================
+
+🎯 OBJETIVO:
+
+Conectar os filtros da topbar do Lovable
+(período de datas e número do contrato)
+com a API de detalhamento.
+
+=============================================
+
+📋 FILTROS NA TOPBAR (Imagem):
+
+1. Seletor de Período: 01/10/2025 - 31/10/2025
+2. Seletor de Empresa: 2444 - 2E DESPACHOS ADUANEIROS
+
+=============================================
+
+🔗 URL DA API:
+
+GET /api/apolices/{nrContrato}/detalhamento?dataInicio={DD/MM/YYYY}&dataFim={DD/MM/YYYY}
+
+EXEMPLO:
+https://sua-url.ngrok/api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025
+
+=============================================
+
+💻 IMPLEMENTAÇÃO (Resumo):
+
+1. Capturar valores dos filtros da topbar
+   - dateRange.from → dataInicio
+   - dateRange.to → dataFim
+
+2. Formatar datas para DD/MM/YYYY
+   const formatarData = (data: Date) => {
+     const dia = String(data.getDate()).padStart(2, '0');
+     const mes = String(data.getMonth() + 1).padStart(2, '0');
+     const ano = data.getFullYear();
+     return `${dia}/${mes}/${ano}`;
+   };
+
+3. Passar para o hook useDetalhamentoApolice
+   const { data } = useDetalhamentoApolice(
+     apolice,
+     dataInicio,  // ← Do filtro
+     dataFim      // ← Do filtro
+   );
+
+4. Hook monta URL com parâmetros
+   const params = new URLSearchParams({
+     dataInicio: '01/10/2025',
+     dataFim: '31/10/2025'
+   });
+
+=============================================
+
+🔄 FLUXO COMPLETO:
+
+1. Usuário seleciona período: 01/10 - 31/10
+2. Usuário clica "Detalhamento" na apólice 2444
+3. Hook captura:
+   - apolice = 2444
+   - dataInicio = "01/10/2025"
+   - dataFim = "31/10/2025"
+4. API chamada:
+   GET /api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025
+5. Dados filtrados exibidos no modal
+
+=============================================
+
+📦 CÓDIGO PRONTO:
+
+O prompt PROMPT_LOVABLE_INTEGRAR_FILTROS.md
+contém:
+
+✓ Hook useDetalhamentoApolice completo
+✓ Função de formatação de datas
+✓ Exemplo completo de integração
+✓ Código do modal com período exibido
+✓ Tratamento de loading e erros
+✓ Validações
+✓ Troubleshooting
+
+=============================================
+
+✨ RECURSOS INCLUÍDOS:
+
+✓ Formatar Date → DD/MM/YYYY
+✓ Capturar valores da topbar
+✓ Passar parâmetros para API
+✓ Mostrar período no modal
+✓ Recarregar ao mudar filtros
+✓ Validação de dados vazios
+
+=============================================
+
+🎯 USAR NO LOVABLE:
+
+1. Abrir: PROMPT_LOVABLE_INTEGRAR_FILTROS.md
+2. Copiar TODO o conteúdo
+3. Colar no Lovable
+4. Ajustar nomes de variáveis conforme seu código
+5. Testar!
+
+=============================================
+
+💡 PRINCIPAIS PONTOS:
+
+✓ API espera formato: DD/MM/YYYY (brasileiro)
+✓ Número do contrato vem da linha clicada
+✓ Datas vem do filtro da topbar
+✓ queryKey inclui datas (recarrega ao mudar)
+✓ Modal mostra período aplicado
+
+=============================================
+
+🧪 TESTAR:
+
+1. Selecionar período: 01/10/2025 - 31/10/2025
+2. Clicar "Detalhamento" na apólice 2444
+3. Verificar URL chamada no Network DevTools
+4. Deve ser: /api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025
+
+=============================================
+
+✅ A API JÁ ESTÁ PRONTA!
+
+Só falta conectar os filtros do Lovable
+com os parâmetros da API usando o código
+do prompt.
+
+=============================================
