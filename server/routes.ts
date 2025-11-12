@@ -711,9 +711,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
           (SELECT SUBSTR(ds_razao_social, 1, 255) 
            FROM pessoa_juridica x 
-           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante"
+           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante",
+          a.cd_classif_contrato as "cdClassifContrato",
+          (SELECT SUBSTR(ds_classificacao, 1, 255) 
+           FROM pls_classificacao_contrato x 
+           WHERE x.cd_classificacao = a.cd_classif_contrato) as "dsClassificacao"
         FROM pls_contrato a
         WHERE 1=1
+        AND a.cd_classif_contrato IS NOT NULL
       `;
 
       const binds: any = {};
@@ -774,7 +779,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
           (SELECT SUBSTR(ds_razao_social, 1, 255) 
            FROM pessoa_juridica x 
-           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante"
+           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante",
+          a.cd_classif_contrato as "cdClassifContrato",
+          (SELECT SUBSTR(ds_classificacao, 1, 255) 
+           FROM pls_classificacao_contrato x 
+           WHERE x.cd_classificacao = a.cd_classif_contrato) as "dsClassificacao"
         FROM pls_contrato a
         WHERE a.NR_CONTRATO = :nrContrato
       `;
