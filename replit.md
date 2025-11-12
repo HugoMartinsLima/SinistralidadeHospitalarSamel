@@ -12,6 +12,7 @@ The API is built using Node.js with the Express framework. It connects to an Ora
 **Key Architectural Decisions:**
 - **Backend Framework**: Node.js and Express for high performance and scalability.
 - **Database**: Oracle Database (19c) for robust data management, accessed via a private network.
+  - **Collation Configuration**: Each Oracle connection is configured with `ALTER SESSION SET NLS_COMP=ANSI NLS_SORT=BINARY` to match SQL Developer's binary collation. This ensures `SELECT DISTINCT` treats accented characters (á, é, ã) as different from unaccented ones (a, e, a), preventing data loss in query results. Without this setting, the linguistic collation would collapse rows with accent differences, causing discrepancies between SQL Developer (526 records) and Node.js driver (520 records).
 - **CORS**: Configured to allow requests from any origin.
 - **Environment Management**: Utilizes Replit Secrets for secure storage of sensitive credentials.
 - **Development Workflow**: Uses `tsx` for direct TypeScript execution during development (`npm run dev`), avoiding compilation steps.

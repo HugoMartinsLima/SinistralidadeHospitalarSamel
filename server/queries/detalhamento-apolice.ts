@@ -64,6 +64,8 @@ function loadSQL(): string {
       .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato IN (:nrContrato)");
     
     console.log('✅ SQL de detalhamento de apólice carregado e parametrizado');
+    console.log('🔍 Primeiras 500 caracteres do SQL parametrizado:');
+    console.log(sqlDetalhamento.substring(0, 500));
   }
   
   return sqlDetalhamento;

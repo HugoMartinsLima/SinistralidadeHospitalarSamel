@@ -43,7 +43,17 @@ export async function getConnection() {
     if (!pool) {
       await initializePool();
     }
-    return await pool!.getConnection();
+    const connection = await pool!.getConnection();
+    
+    // Configurar collation para match com SQL Developer
+    // Isso garante que DISTINCT não remova linhas com diferenças de acentuação
+    await connection.execute(
+      `ALTER SESSION SET NLS_COMP=ANSI NLS_SORT=BINARY`,
+      [],
+      { autoCommit: false }
+    );
+    
+    return connection;
   } catch (err) {
     console.error('❌ Erro ao obter conexão do pool:', err);
     throw err;
@@ -75,6 +85,8 @@ export async function executeQuery<T = any>(
     connection = await getConnection();
     const result = await connection.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
+      fetchArraySize: 1000, // Aumentar buffer de fetch
+      maxRows: 0, // 0 = sem limite (padrão, mas explicitando)
       ...options,
     });
     return (result.rows as T[]) || [];
