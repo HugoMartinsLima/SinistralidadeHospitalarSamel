@@ -705,27 +705,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = req.query.offset ? Number(req.query.offset) : 0;
       const search = req.query.search as string | undefined;
 
-      let sql = `
-        SELECT 
-          a.NR_CONTRATO as "nrContrato",
-          a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
-          (SELECT SUBSTR(ds_razao_social, 1, 255) 
-           FROM pessoa_juridica x 
-           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante",
-          a.cd_classif_contrato as "cdClassifContrato",
-          (SELECT SUBSTR(ds_classificacao, 1, 255) 
-           FROM pls_classificacao_contrato x 
-           WHERE x.cd_classificacao = a.cd_classif_contrato) as "dsClassificacao"
-        FROM pls_contrato a
-        WHERE 1=1
-        AND a.cd_classif_contrato IS NOT NULL
-      `;
-
       const binds: any = {};
+      let whereClause = 'WHERE 1=1';
 
       // Filtro de busca (número do contrato ou razão social)
       if (search) {
-        sql += ` AND (
+        whereClause += ` AND (
           TO_CHAR(a.NR_CONTRATO) LIKE :search 
           OR EXISTS (
             SELECT 1 FROM pessoa_juridica pj 
@@ -737,19 +722,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         binds.searchUpper = `%${search}%`;
       }
 
-      sql += ` ORDER BY 3 ASC`;
-      sql += ` OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+      // 1. Query de contagem total
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM pls_contrato a
+        ${whereClause}
+      `;
+      
+      const countResult = await executeQuery<{ total: number }>(countSql, binds);
+      const total = countResult[0]?.total || 0;
+
+      // 2. Query de dados paginados
+      const dataSql = `
+        SELECT 
+          a.NR_CONTRATO as "nrContrato",
+          a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
+          (SELECT SUBSTR(ds_razao_social, 1, 255) 
+           FROM pessoa_juridica x 
+           WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante",
+          a.cd_classif_contrato as "cdClassifContrato",
+          (SELECT SUBSTR(ds_classificacao, 1, 255) 
+           FROM pls_classificacao_contrato x 
+           WHERE x.cd_classificacao = a.cd_classif_contrato) as "dsClassificacao"
+        FROM pls_contrato a
+        ${whereClause}
+        ORDER BY 3 ASC
+        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `;
+      
       binds.offset = offset;
       binds.limit = limit;
 
-      const contratos = await executeQuery<Contrato>(sql, binds);
+      const contratos = await executeQuery<Contrato>(dataSql, binds);
 
+      // 3. Retornar com paginação
       res.json({
         data: contratos,
         pagination: {
           limit,
           offset,
-          total: contratos.length,
+          total
         }
       });
     } catch (error) {

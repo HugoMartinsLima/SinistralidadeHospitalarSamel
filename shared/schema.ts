@@ -90,13 +90,12 @@ export const filtroSinistrosSchema = z.object({
 export type FiltroSinistros = z.infer<typeof filtroSinistrosSchema>;
 
 // Schema para contratos (baseado em pls_contrato)
-// Nota: endpoint filtra apenas contratos com classificação (WHERE cd_classif_contrato IS NOT NULL)
 export const contratoSchema = z.object({
   nrContrato: z.number(),
   cdCgcEstipulante: z.string(),
   dsEstipulante: z.string(),
-  cdClassifContrato: z.string(),
-  dsClassificacao: z.string(),
+  cdClassifContrato: z.string().nullable(),
+  dsClassificacao: z.string().nullable(),
 });
 
 export type Contrato = z.infer<typeof contratoSchema>;

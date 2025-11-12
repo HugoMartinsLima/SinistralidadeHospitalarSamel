@@ -24,7 +24,7 @@ The API is built using Node.js with the Express framework. It connects to an Ora
     - **Health Check**: An endpoint (`GET /api/health`) to monitor API and database connectivity.
     - **Filtering and Pagination**: Supported on listing endpoints (`/api/sinistros`, `/api/pacientes`, `/api/apolices/:nrContrato/detalhamento`).
     - **Statistical Endpoints**: Provides general statistics on sinistros (`GET /api/estatisticas`).
-    - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Filters to show only contracts with classification assigned.
+    - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with optional classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Supports pagination with total count, search by contract number or company name (razão social), and returns all contracts including those without classification.
     - **Detailed Policy Information**: A complex endpoint (`GET /api/apolices/:nrContrato/detalhamento`) for comprehensive policy breakdown, involving extensive SQL queries (CTEs, JOINs).
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.

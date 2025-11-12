@@ -1,0 +1,68 @@
+Substitua o endpoint /api/contratos atual por este código:
+
+
+app.get('/api/contratos', async (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = parseInt(req.query.offset) || 0;
+  const search = req.query.search || '';
+
+  try {
+    // 1. Query de contagem total
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM pls_contrato a
+      WHERE 1=1
+        ${search ? `AND (
+          UPPER((SELECT ds_razao_social FROM pessoa_juridica x WHERE x.cd_cgc = a.cd_cgc_estipulante)) LIKE UPPER('%${search}%')
+          OR CAST(a.NR_CONTRATO AS VARCHAR) LIKE '%${search}%'
+        )` : ''}
+    `;
+    
+    const countResult = await db.query(countQuery);
+    const total = countResult.rows[0].total;
+
+    // 2. Query de dados paginados
+    const dataQuery = `
+      SELECT 
+        a.NR_CONTRATO as "nrContrato",
+        a.CD_CGC_ESTIPULANTE as "cdCgcEstipulante",
+        (SELECT SUBSTR(ds_razao_social, 1, 255) 
+         FROM pessoa_juridica x 
+         WHERE x.cd_cgc = a.cd_cgc_estipulante) as "dsEstipulante",
+        a.cd_classif_contrato as "cdClassifContrato",
+        (SELECT SUBSTR(ds_classificacao, 1, 255) 
+         FROM pls_classificacao_contrato x 
+         WHERE x.cd_classificacao = a.cd_classif_contrato) as "dsClassificacao"
+      FROM pls_contrato a
+      WHERE 1=1
+        ${search ? `AND (
+          UPPER((SELECT ds_razao_social FROM pessoa_juridica x WHERE x.cd_cgc = a.cd_cgc_estipulante)) LIKE UPPER('%${search}%')
+          OR CAST(a.NR_CONTRATO AS VARCHAR) LIKE '%${search}%'
+        )` : ''}
+      ORDER BY 3 ASC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    
+    const dataResult = await db.query(dataQuery);
+
+    // 3. Retornar com paginação
+    res.json({
+      data: dataResult.rows,
+      pagination: {
+        limit: limit,
+        offset: offset,
+        total: total
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar contratos:', error);
+    res.status(500).json({ error: 'Erro ao buscar contratos' });
+  }
+});
+✅ Mudanças Principais
+Removido: WHERE a.cd_classif_contrato is not null
+Adicionado: Query de contagem total
+Adicionado: LIMIT e OFFSET para paginação
+Adicionado: Suporte a busca por texto opcional
