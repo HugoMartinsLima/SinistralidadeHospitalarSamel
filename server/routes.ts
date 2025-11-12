@@ -854,6 +854,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Buscar detalhamento de uma apólice (procedimentos e atendimentos)
+  // Endpoint DEBUG: exportar IDs únicos para comparação
+  app.get("/api/apolices/:nrContrato/detalhamento/debug-ids", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      
+      const filtros = filtroDetalhamentoApoliceSchema.parse({
+        nrContrato,
+        dataInicio: req.query.dataInicio || '01/10/2025',
+        dataFim: req.query.dataFim || '31/10/2025',
+        limit: 10000,
+        offset: 0,
+      });
+
+      const resultados = await getDetalhamentoApolice(filtros);
+      
+      // Gerar identificadores únicos para cada registro
+      const ids = resultados.map((r, idx) => ({
+        index: idx + 1,
+        atendimento: r.atendimento,
+        data: r.data,
+        hora: r.hora,
+        cod_tuss: r.cod_tuss,
+        nm_proced: r.nm_proced,
+        beneficiario: r.beneficiario,
+        prestador: r.prestador,
+        valor: r.valor,
+        // Fingerprint único combinando campos principais
+        fingerprint: `${r.atendimento}|${r.data}|${r.hora}|${r.cod_tuss}|${r.nm_proced}|${r.beneficiario}`
+      }));
+      
+      res.json({
+        total: ids.length,
+        message: `Exportando ${ids.length} identificadores únicos para comparação com SQL Developer (esperado: 526)`,
+        ids: ids
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: "Erro ao exportar IDs",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   app.get("/api/apolices/:nrContrato/detalhamento", async (req, res) => {
     try {
       const nrContrato = Number(req.params.nrContrato);

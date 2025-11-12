@@ -1,0 +1,61 @@
+✅ Collation configurada: NLS_COMP=ANSI, NLS_SORT=BINARY
+🔍 Configuração NLS atual: [
+  { PARAMETER: 'NLS_SORT', VALUE: 'BINARY' },
+  { PARAMETER: 'NLS_COMP', VALUE: 'ANSI' }
+]
+✅ Collation configurada: NLS_COMP=ANSI, NLS_SORT=BINARY
+🔍 Configuração NLS atual: [
+  { PARAMETER: 'NLS_SORT', VALUE: 'BINARY' },
+  { PARAMETER: 'NLS_COMP', VALUE: 'ANSI' }
+]
+5:07:42 PM [express] GET /api/contratos 304 in 86ms :: {"data":[{"nrContrato":5998,"cdCgcEstipulante…
+✅ SQL de detalhamento de apólice carregado e parametrizado
+🔍 Primeiras 500 caracteres do SQL parametrizado:
+SELECT
+     distinct
+ data,
+ hora,
+ dataalta,
+ upper(tipo_internacao) tipo_internacao,
+ upper(carater_atendimento) carater_atendimento,
+ upper(tipo_conta) tipo_conta,
+ upper(atendimento) atendimento,
+ upper(autorizacao_original) autorizacao_original,
+ upper(tipo_validacao_clinica_externa) tipo_validacao_clinica_externa,
+ data_validacao_clinica_externa,
+ case upper(tipo_conta)
+ when upper('Pronto socorro') then to_char(datareal, 'DD/MM/YYYY HH24:MI')
+ else dt_procedimento end dt_p
+✅ Collation configurada: NLS_COMP=ANSI, NLS_SORT=BINARY
+🔍 Configuração NLS atual: [
+  { PARAMETER: 'NLS_SORT', VALUE: 'BINARY' },
+  { PARAMETER: 'NLS_COMP', VALUE: 'ANSI' }
+]
+================================================================================
+🔍 DEBUG DETALHAMENTO DE APÓLICE
+================================================================================
+1. Total retornado do Oracle: 520
+2. Parâmetros recebidos: {
+  limit: 10000,
+  offset: 0,
+  grupoReceita: undefined,
+  apolice: 2455,
+  dataInicio: '01/10/2025',
+  dataFim: '31/10/2025'
+}
+3. Total após filtro de grupoReceita: (SEM FILTRO) 520
+4. Total após slice/paginação (0 a 10000): 520
+   → Intervalo solicitado: offset=0, limit=10000
+5. Total enviado no resultado final: 520
+================================================================================
+⚠️  RESUMO DA DISCREPÂNCIA:
+   Oracle retornou: 520 registros
+   API vai retornar: 520 registros
+   Diferença: 0 registros
+================================================================================
+📤 RESPOSTA FINAL ENVIADA AO CLIENTE:
+   → data.length: 520
+   → pagination.total: 520
+   → pagination.limit: 10000
+   → pagination.offset: 0
+5:07:57 PM [express] GET /api/apolices/2455/detalhamento 200 in 2491ms :: {"data":[{"DATA":"11/10/20…

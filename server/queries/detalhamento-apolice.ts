@@ -93,6 +93,22 @@ export async function getDetalhamentoApolice(
   console.log('🔍 DEBUG DETALHAMENTO DE APÓLICE');
   console.log('='.repeat(80));
   console.log('1. Total retornado do Oracle:', resultados.length);
+  
+  // Gerar fingerprints únicos para cada registro (para comparação)
+  const fingerprints = resultados.map((r, idx) => ({
+    index: idx,
+    atendimento: r.atendimento,
+    data: r.data,
+    cod_tuss: r.cod_tuss,
+    nm_proced: r.nm_proced?.substring(0, 30),
+    beneficiario: r.beneficiario?.substring(0, 20),
+    fingerprint: `${r.atendimento}|${r.data}|${r.cod_tuss}|${r.nm_proced}`
+  }));
+  
+  console.log('🔍 Primeiros 5 registros (fingerprints):');
+  fingerprints.slice(0, 5).forEach(f => console.log(`  - ${f.fingerprint}`));
+  console.log('🔍 Últimos 5 registros (fingerprints):');
+  fingerprints.slice(-5).forEach(f => console.log(`  - ${f.fingerprint}`));
   console.log('2. Parâmetros recebidos:', { 
     limit: params.limit, 
     offset: params.offset, 
