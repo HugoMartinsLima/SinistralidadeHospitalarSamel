@@ -87,28 +87,51 @@ export async function getDetalhamentoApolice(
   // Executar query
   const resultados = await executeQuery<DetalhamentoApoliceResult>(sql, binds);
   
-  console.log(`📊 Detalhamento - Total de registros do Oracle: ${resultados.length}`);
-  console.log(`📊 Parâmetros - limit: ${params.limit}, offset: ${params.offset}, grupoReceita: ${params.grupoReceita}`);
+  console.log('='.repeat(80));
+  console.log('🔍 DEBUG DETALHAMENTO DE APÓLICE');
+  console.log('='.repeat(80));
+  console.log('1. Total retornado do Oracle:', resultados.length);
+  console.log('2. Parâmetros recebidos:', { 
+    limit: params.limit, 
+    offset: params.offset, 
+    grupoReceita: params.grupoReceita,
+    apolice: params.nrContrato,
+    dataInicio: params.dataInicio,
+    dataFim: params.dataFim
+  });
   
   // Filtrar por grupo de receita se fornecido
   let filtered = resultados;
   if (params.grupoReceita && params.grupoReceita.toUpperCase() !== 'TODAS') {
+    const beforeFilter = filtered.length;
     filtered = resultados.filter(
       r => r.gruporeceita?.toUpperCase() === params.grupoReceita?.toUpperCase()
     );
-    console.log(`📊 Após filtro de grupo receita: ${filtered.length} registros`);
+    console.log(`3. Total após filtro de grupoReceita (${params.grupoReceita}):`, filtered.length);
+    console.log(`   → Removidos pelo filtro:`, beforeFilter - filtered.length);
+  } else {
+    console.log('3. Total após filtro de grupoReceita: (SEM FILTRO)', filtered.length);
   }
 
   // Aplicar paginação (sempre que limit for fornecido)
-  // Se offset não for fornecido, usa 0 como padrão
+  let beforePagination = filtered.length;
   if (params.limit !== undefined) {
     const start = params.offset || 0;
     const end = start + params.limit;
     filtered = filtered.slice(start, end);
-    console.log(`📊 Após paginação (${start} a ${end}): ${filtered.length} registros`);
+    console.log(`4. Total após slice/paginação (${start} a ${end}):`, filtered.length);
+    console.log(`   → Intervalo solicitado: offset=${start}, limit=${params.limit}`);
+  } else {
+    console.log('4. Total após slice/paginação: (SEM PAGINAÇÃO)', filtered.length);
   }
 
-  console.log(`📊 Total retornado pela API: ${filtered.length} registros`);
+  console.log('5. Total enviado no resultado final:', filtered.length);
+  console.log('='.repeat(80));
+  console.log('⚠️  RESUMO DA DISCREPÂNCIA:');
+  console.log(`   Oracle retornou: ${resultados.length} registros`);
+  console.log(`   API vai retornar: ${filtered.length} registros`);
+  console.log(`   Diferença: ${resultados.length - filtered.length} registros`);
+  console.log('='.repeat(80));
   
   return filtered;
 }

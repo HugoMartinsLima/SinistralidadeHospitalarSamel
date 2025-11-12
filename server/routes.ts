@@ -878,6 +878,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar detalhamento usando o módulo de queries
       const resultados = await getDetalhamentoApolice(filtros);
 
+      console.log('📤 RESPOSTA FINAL ENVIADA AO CLIENTE:');
+      console.log('   → data.length:', resultados.length);
+      console.log('   → pagination.total:', resultados.length);
+      console.log('   → pagination.limit:', filtros.limit || resultados.length);
+      console.log('   → pagination.offset:', filtros.offset);
+
       res.json({
         data: resultados,
         pagination: {
