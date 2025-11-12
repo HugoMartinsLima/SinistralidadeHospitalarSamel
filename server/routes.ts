@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { executeQuery, executeUpdate, testConnection, initializePool } from "./oracle-db";
-import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato } from "@shared/schema";
-import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema } from "@shared/schema";
+import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato, FiltroDetalhamentoApolice } from "@shared/schema";
+import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, filtroDetalhamentoApoliceSchema } from "@shared/schema";
+import { getDetalhamentoApolice } from "./queries/detalhamento-apolice";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -827,6 +828,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // ENDPOINTS DE DETALHAMENTO DE APÓLICES
+  // ============================================
+
+  // Buscar detalhamento de uma apólice (procedimentos e atendimentos)
+  app.get("/api/apolices/:nrContrato/detalhamento", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Número de contrato inválido",
+          message: "O número do contrato deve ser um número válido"
+        });
+      }
+
+      // Validar e extrair parâmetros de query
+      const filtros = filtroDetalhamentoApoliceSchema.parse({
+        nrContrato,
+        dataInicio: req.query.dataInicio || '01/10/2025',
+        dataFim: req.query.dataFim || '31/10/2025',
+        grupoReceita: req.query.grupoReceita as string | undefined,
+        limit: req.query.limit ? Number(req.query.limit) : 100,
+        offset: req.query.offset ? Number(req.query.offset) : 0,
+      });
+
+      // Buscar detalhamento usando o módulo de queries
+      const resultados = await getDetalhamentoApolice(filtros);
+
+      res.json({
+        data: resultados,
+        pagination: {
+          limit: filtros.limit,
+          offset: filtros.offset,
+          total: resultados.length,
+        },
+        filters: {
+          nrContrato: filtros.nrContrato,
+          dataInicio: filtros.dataInicio,
+          dataFim: filtros.dataFim,
+          grupoReceita: filtros.grupoReceita || 'TODAS'
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar detalhamento de apólice:', error);
+      
+      // Distinguir erros de validação de erros de banco de dados
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({
+          error: "Erro de validação",
+          message: error instanceof Error ? error.message : "Parâmetros inválidos"
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao buscar detalhamento de apólice",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -849,6 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/contratos", description: "Listar contratos (pls_contrato)" },
         { method: "GET", path: "/api/contratos/:nrContrato", description: "Buscar contrato por número" },
         { method: "GET", path: "/api/grupos-receita", description: "Listar grupos de receita ativos" },
+        { method: "GET", path: "/api/apolices/:nrContrato/detalhamento", description: "Buscar detalhamento de apólice (procedimentos e atendimentos)" },
       ]
     });
   });

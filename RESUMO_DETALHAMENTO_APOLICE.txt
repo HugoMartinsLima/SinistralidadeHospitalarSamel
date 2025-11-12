@@ -1,0 +1,148 @@
+===========================================
+✅ ENDPOINT CRIADO: Detalhamento de Apólice
+===========================================
+
+📊 NOVO ENDPOINT:
+GET /api/apolices/:nrContrato/detalhamento
+
+Executa SQL complexo (1231 linhas) para buscar detalhes de procedimentos, atendimentos e valores de uma apólice.
+
+===========================================
+
+🔗 URL COMPLETA:
+https://unhalted-tanja-unvinous.ngrok-free.dev/api/apolices/2444/detalhamento
+
+===========================================
+
+📥 PARÂMETROS:
+
+Path:
+  - nrContrato: Número da apólice (obrigatório)
+
+Query (opcionais):
+  - dataInicio: DD/MM/YYYY (padrão: 01/10/2025)
+  - dataFim: DD/MM/YYYY (padrão: 31/10/2025)
+  - grupoReceita: Nome do grupo (padrão: TODAS)
+  - limit: Quantidade (padrão: 100)
+  - offset: Paginação (padrão: 0)
+
+===========================================
+
+📤 EXEMPLO DE RESPOSTA:
+{
+  "data": [
+    {
+      "data": "15/10/2025",
+      "nm_proced": "Consulta em Cardiologia",
+      "beneficiario": "JOÃO DA SILVA",
+      "prestador": "DR. CARLOS SOUZA",
+      "especialidade": "CARDIOLOGIA",
+      "gruporeceita": "CONSULTAS ELETIVAS",
+      "valor": 150.00,
+      "cid_doenca": "I10 - HIPERTENSÃO"
+    }
+  ],
+  "pagination": { "total": 156 },
+  "filters": {
+    "nrContrato": 2444,
+    "dataInicio": "01/10/2025",
+    "dataFim": "31/10/2025",
+    "grupoReceita": "TODAS"
+  }
+}
+
+===========================================
+
+💻 USAR NO LOVABLE:
+
+1. Abra: PROMPT_LOVABLE_BOTAO_DETALHAMENTO.md
+2. Copie TODO o conteúdo
+3. Cole no Lovable
+4. O botão "Detalhamento" vai funcionar!
+
+===========================================
+
+🧪 TESTAR AGORA:
+
+Navegador:
+https://unhalted-tanja-unvinous.ngrok-free.dev/api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025
+
+cURL:
+curl "https://unhalted-tanja-unvinous.ngrok-free.dev/api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025" -H "ngrok-skip-browser-warning: true"
+
+===========================================
+
+📁 ARQUIVOS CRIADOS:
+
+✓ server/queries/detalhamento-apolice.ts - Módulo de query
+✓ server/sql/detalhamento-apolice-completo.sql - SQL completo
+✓ server/routes.ts - Endpoint adicionado
+✓ shared/schema.ts - Validação Zod
+✓ API_DETALHAMENTO_APOLICE.md - Documentação completa
+✓ PROMPT_LOVABLE_BOTAO_DETALHAMENTO.md - Prompt para Lovable
+✓ RESUMO_DETALHAMENTO_APOLICE.txt - Este arquivo
+
+===========================================
+
+✅ O QUE FOI FEITO:
+
+1. ✅ SQL parametrizado com bind variables (seguro)
+2. ✅ Arquitetura em camadas (routes → queries → db)
+3. ✅ Validação com Zod
+4. ✅ Paginação suportada
+5. ✅ Filtro por grupo de receita
+6. ✅ CORS configurado
+7. ✅ Documentação completa
+8. ✅ Prompt pronto para Lovable
+9. ✅ Cache do SQL na inicialização
+
+===========================================
+
+🎯 PRÓXIMO PASSO:
+
+1. Abrir: PROMPT_LOVABLE_BOTAO_DETALHAMENTO.md
+2. Copiar todo o conteúdo
+3. Colar no Lovable
+4. Escolher entre:
+   a) Modal de detalhamento (mais rápido)
+   b) Nova página de detalhamento (mais espaço)
+
+===========================================
+
+⚠️ LEMBRE-SE:
+
+- Header obrigatório: 'ngrok-skip-browser-warning': 'true'
+- URL do Ngrok muda quando reinicia
+- Formato de data: DD/MM/YYYY
+- Número da apólice: vem da linha da tabela clicada
+
+===========================================
+
+🏗️ ARQUITETURA LIMPA:
+
+routes.ts (Controller)
+    ↓ valida parâmetros
+queries/detalhamento-apolice.ts (Service)
+    ↓ carrega SQL e parametriza
+oracle-db.ts (Data Access)
+    ↓ executa query
+Oracle Database
+    ↓ retorna dados
+JSON Response
+
+SQL carregado 1x na inicialização (performance!)
+
+===========================================
+
+📊 PRINCIPAIS CAMPOS:
+
+- data, hora, dataalta
+- tipo_conta, atendimento
+- nm_proced, tiposervico, gruporeceita
+- beneficiario, titular, tipodependente
+- prestador, especialidade
+- valor, valortotal, qtde
+- cid_doenca
+- vl_procedimento_coparticipacao
+
+===========================================
