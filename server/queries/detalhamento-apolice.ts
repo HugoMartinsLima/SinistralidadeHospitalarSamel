@@ -195,3 +195,82 @@ export async function getDetalhamentoApoliceNoDistinct(
   // Retornar TODOS os registros (sem filtro, sem paginação)
   return resultados;
 }
+
+/**
+ * Busca o detalhamento de uma apólice COM DEDUPLICAÇÃO em JavaScript
+ * Remove duplicatas usando chave composta, preservando primeiro registro de cada grupo
+ */
+export async function getDetalhamentoApoliceDeduplicado(
+  params: DetalhamentoApoliceParams
+): Promise<{deduplicated: DetalhamentoApoliceResult[], duplicates: any[]}> {
+  // Executar SQL SEM DISTINCT para obter TODOS os registros
+  const todosRegistros = await getDetalhamentoApoliceNoDistinct(params);
+  
+  console.log('='.repeat(80));
+  console.log('🔧 APLICANDO DEDUPLICAÇÃO EM JAVASCRIPT');
+  console.log('='.repeat(80));
+  console.log('1. Total de registros ANTES da deduplicação:', todosRegistros.length);
+  
+  // Mapa para rastrear registros únicos
+  const registrosUnicos = new Map<string, DetalhamentoApoliceResult>();
+  const duplicatasEncontradas: any[] = [];
+  
+  // Aplicar deduplicação usando chave composta
+  todosRegistros.forEach((registro, index) => {
+    // Chave composta que identifica unicamente um procedimento
+    const chave = `${registro.atendimento}|${registro.data}|${registro.hora}|${registro.cod_tuss}|${registro.nm_proced}|${registro.beneficiario}`;
+    
+    if (!registrosUnicos.has(chave)) {
+      // Primeiro registro com esta chave - manter
+      registrosUnicos.set(chave, registro);
+    } else {
+      // Duplicata encontrada - registrar para análise
+      const registroOriginal = registrosUnicos.get(chave)!;
+      duplicatasEncontradas.push({
+        chave,
+        index,
+        original: {
+          atendimento: registroOriginal.atendimento,
+          data: registroOriginal.data,
+          cod_tuss: registroOriginal.cod_tuss,
+          nm_proced: registroOriginal.nm_proced,
+          valor: registroOriginal.valor,
+          valortotal: registroOriginal.valortotal
+        },
+        duplicata: {
+          atendimento: registro.atendimento,
+          data: registro.data,
+          cod_tuss: registro.cod_tuss,
+          nm_proced: registro.nm_proced,
+          valor: registro.valor,
+          valortotal: registro.valortotal
+        },
+        diferencaValor: Number(registro.valor || 0) - Number(registroOriginal.valor || 0),
+        diferencaValorTotal: Number(registro.valortotal || 0) - Number(registroOriginal.valortotal || 0)
+      });
+    }
+  });
+  
+  const deduplicated = Array.from(registrosUnicos.values());
+  
+  console.log('2. Total de registros APÓS deduplicação:', deduplicated.length);
+  console.log('3. Total de duplicatas removidas:', duplicatasEncontradas.length);
+  
+  if (duplicatasEncontradas.length > 0) {
+    console.log('⚠️  DUPLICATAS ENCONTRADAS:');
+    duplicatasEncontradas.slice(0, 5).forEach((dup, idx) => {
+      console.log(`   ${idx + 1}. ${dup.chave}`);
+      console.log(`      Diferença valor: R$ ${dup.diferencaValor.toFixed(2)} | Diferença total: R$ ${dup.diferencaValorTotal.toFixed(2)}`);
+    });
+    if (duplicatasEncontradas.length > 5) {
+      console.log(`   ... e mais ${duplicatasEncontradas.length - 5} duplicatas`);
+    }
+  }
+  
+  console.log('='.repeat(80));
+  
+  return {
+    deduplicated,
+    duplicates: duplicatasEncontradas
+  };
+}
