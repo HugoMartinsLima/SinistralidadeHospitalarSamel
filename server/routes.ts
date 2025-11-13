@@ -4,7 +4,7 @@ import { z } from "zod";
 import { executeQuery, executeUpdate, testConnection, initializePool } from "./oracle-db";
 import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato, FiltroDetalhamentoApolice } from "@shared/schema";
 import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, filtroDetalhamentoApoliceSchema } from "@shared/schema";
-import { getDetalhamentoApolice } from "./queries/detalhamento-apolice";
+import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct } from "./queries/detalhamento-apolice";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -894,6 +894,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Erro ao exportar IDs",
         message: error instanceof Error ? error.message : "Erro desconhecido"
       });
+    }
+  });
+
+  // Endpoint DEBUG: comparação entre versões COM e SEM DISTINCT
+  app.get("/api/apolices/:nrContrato/detalhamento/comparacao", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Número de contrato inválido",
+          message: "O número do contrato deve ser um número válido"
+        });
+      }
+
+      const filtros = filtroDetalhamentoApoliceSchema.parse({
+        nrContrato,
+        dataInicio: req.query.dataInicio || '01/10/2025',
+        dataFim: req.query.dataFim || '31/10/2025',
+      });
+
+      console.log('🔬 INICIANDO COMPARAÇÃO COM/SEM DISTINCT...');
+      
+      // Executar ambas as versões em paralelo
+      const [comDistinct, semDistinct] = await Promise.all([
+        getDetalhamentoApolice(filtros),
+        getDetalhamentoApoliceNoDistinct(filtros)
+      ]);
+      
+      // Calcular somas
+      const somaValorComDistinct = comDistinct.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
+      const somaValorTotalComDistinct = comDistinct.reduce((acc, r) => acc + (Number(r.valortotal) || 0), 0);
+      
+      const somaValorSemDistinct = semDistinct.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
+      const somaValorTotalSemDistinct = semDistinct.reduce((acc, r) => acc + (Number(r.valortotal) || 0), 0);
+      
+      // Criar fingerprints para identificar registros únicos
+      const fingerprintsComDistinct = new Set(
+        comDistinct.map(r => `${r.atendimento}|${r.data}|${r.hora}|${r.cod_tuss}|${r.nm_proced}|${r.beneficiario}`)
+      );
+      
+      const fingerprintsSemDistinct = new Set(
+        semDistinct.map(r => `${r.atendimento}|${r.data}|${r.hora}|${r.cod_tuss}|${r.nm_proced}|${r.beneficiario}`)
+      );
+      
+      // Identificar registros únicos em cada versão
+      const apenasComDistinct = Array.from(fingerprintsComDistinct).filter(f => !fingerprintsSemDistinct.has(f));
+      const apenasSemDistinct = Array.from(fingerprintsSemDistinct).filter(f => !fingerprintsComDistinct.has(f));
+      
+      // Análise comparativa
+      const analise = {
+        comDistinct: {
+          totalRegistros: comDistinct.length,
+          somaValor: somaValorComDistinct.toFixed(2),
+          somaValorTotal: somaValorTotalComDistinct.toFixed(2),
+          registrosUnicos: apenasComDistinct.length,
+          exemploRegistrosUnicos: apenasComDistinct.slice(0, 5)
+        },
+        semDistinct: {
+          totalRegistros: semDistinct.length,
+          somaValor: somaValorSemDistinct.toFixed(2),
+          somaValorTotal: somaValorTotalSemDistinct.toFixed(2),
+          registrosUnicos: apenasSemDistinct.length,
+          exemploRegistrosUnicos: apenasSemDistinct.slice(0, 5)
+        },
+        diferenca: {
+          registros: semDistinct.length - comDistinct.length,
+          somaValor: (somaValorSemDistinct - somaValorComDistinct).toFixed(2),
+          somaValorTotal: (somaValorTotalSemDistinct - somaValorTotalComDistinct).toFixed(2),
+          percentualRegistros: ((semDistinct.length - comDistinct.length) / comDistinct.length * 100).toFixed(2) + '%'
+        },
+        conclusao: {
+          message: semDistinct.length > comDistinct.length 
+            ? `⚠️ Os DISTINCTs removeram ${semDistinct.length - comDistinct.length} registros (${((semDistinct.length - comDistinct.length) / semDistinct.length * 100).toFixed(2)}% do total sem DISTINCT)`
+            : '✅ Nenhuma diferença encontrada entre as versões',
+          impactoFinanceiro: (somaValorTotalSemDistinct - somaValorTotalComDistinct) !== 0
+            ? `⚠️ Diferença de R$ ${(somaValorTotalSemDistinct - somaValorTotalComDistinct).toFixed(2)} no valor total`
+            : '✅ Valores financeiros idênticos'
+        }
+      };
+      
+      res.json({
+        filters: {
+          nrContrato: filtros.nrContrato,
+          dataInicio: filtros.dataInicio,
+          dataFim: filtros.dataFim,
+        },
+        analise,
+        dadosCompletos: {
+          comDistinct: comDistinct,
+          semDistinct: semDistinct
+        }
+      });
+    } catch (error) {
+      console.error('Erro na comparação:', error);
+      
+      res.status(500).json({
+        error: "Erro na comparação",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // Endpoint DEBUG: retornar dados SEM DISTINCT (todos os registros incluindo duplicatas)
+  app.get("/api/apolices/:nrContrato/detalhamento/debug-full", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Número de contrato inválido",
+          message: "O número do contrato deve ser um número válido"
+        });
+      }
+
+      const filtros = filtroDetalhamentoApoliceSchema.parse({
+        nrContrato,
+        dataInicio: req.query.dataInicio || '01/10/2025',
+        dataFim: req.query.dataFim || '31/10/2025',
+      });
+
+      // Buscar usando SQL SEM DISTINCT
+      const resultados = await getDetalhamentoApoliceNoDistinct(filtros);
+      
+      // Calcular soma de valores
+      const somaValor = resultados.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
+      const somaValorTotal = resultados.reduce((acc, r) => acc + (Number(r.valortotal) || 0), 0);
+      
+      res.json({
+        data: resultados,
+        totals: {
+          registros: resultados.length,
+          somaValor: somaValor.toFixed(2),
+          somaValorTotal: somaValorTotal.toFixed(2)
+        },
+        filters: {
+          nrContrato: filtros.nrContrato,
+          dataInicio: filtros.dataInicio,
+          dataFim: filtros.dataFim,
+        },
+        warning: "⚠️ Estes dados INCLUEM possíveis duplicatas (SQL executado SEM DISTINCT)"
+      });
+    } catch (error) {
+      console.error('Erro ao buscar detalhamento sem DISTINCT:', error);
+      
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({
+          error: "Erro de validação",
+          message: "Os parâmetros fornecidos são inválidos",
+          details: error
+        });
+      } else {
+        res.status(500).json({
+          error: "Erro ao buscar detalhamento",
+          message: error instanceof Error ? error.message : "Erro desconhecido"
+        });
+      }
     }
   });
 

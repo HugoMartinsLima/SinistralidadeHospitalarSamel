@@ -153,3 +153,45 @@ export async function getDetalhamentoApolice(
   
   return filtered;
 }
+
+/**
+ * Busca o detalhamento de uma apólice SEM DISTINCT (versão debug)
+ * Retorna TODOS os registros incluindo possíveis duplicatas
+ */
+export async function getDetalhamentoApoliceNoDistinct(
+  params: DetalhamentoApoliceParams
+): Promise<DetalhamentoApoliceResult[]> {
+  // Carregar SQL sem DISTINCT
+  const sqlPath = join(__dirname, '../sql/detalhamento-apolice-completo-no-distinct.sql');
+  let sql = readFileSync(sqlPath, 'utf-8');
+  
+  // Substituir valores fixos por bind variables
+  sql = sql
+    .replace(/TO_DATE\('01\/10\/2025'/g, "TO_DATE(:dataInicio")
+    .replace(/TO_DATE\('31\/10\/2025'/g, "TO_DATE(:dataFim")
+    .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato IN (:nrContrato)");
+  
+  // Construir bind variables
+  const binds: any = {
+    dataInicio: params.dataInicio,
+    dataFim: params.dataFim,
+    nrContrato: params.nrContrato,
+  };
+
+  // Executar query
+  const resultados = await executeQuery<DetalhamentoApoliceResult>(sql, binds);
+  
+  console.log('='.repeat(80));
+  console.log('🔍 DEBUG DETALHAMENTO SEM DISTINCT');
+  console.log('='.repeat(80));
+  console.log('1. Total retornado do Oracle (SEM DISTINCT):', resultados.length);
+  console.log('2. Parâmetros:', { 
+    apolice: params.nrContrato,
+    dataInicio: params.dataInicio,
+    dataFim: params.dataFim
+  });
+  console.log('='.repeat(80));
+  
+  // Retornar TODOS os registros (sem filtro, sem paginação)
+  return resultados;
+}
