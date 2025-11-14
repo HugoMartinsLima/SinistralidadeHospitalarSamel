@@ -108,15 +108,7 @@ export async function executeQuery<T = any>(
       ...options,
     });
     
-    // Normalizar chaves para lowercase (Oracle retorna UPPERCASE mas queremos consistência)
-    const rows = result.rows || [];
-    const normalizedRows = rows.map((row: any) => 
-      Object.fromEntries(
-        Object.entries(row).map(([k, v]) => [k.toLowerCase(), v])
-      )
-    );
-    
-    return (normalizedRows as T[]) || [];
+    return (result.rows as T[]) || [];
   } catch (err) {
     console.error('❌ Erro ao executar query:', err);
     console.error('SQL:', sql);
