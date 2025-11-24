@@ -1,0 +1,89 @@
+Cole este prompt no Lovable para criar a página de detalhamento de sinistros:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Criar página "Análise de Apólices" com tabela detalhada de sinistros.
+
+**API Endpoint:**
+GET https://sua-url.ngrok-free.dev/api/apolices/:nrContrato/detalhamento?dataInicio=DD/MM/YYYY&dataFim=DD/MM/YYYY&grupoReceita=TODAS&limit=100&offset=0
+
+**Header obrigatório:**
+'ngrok-skip-browser-warning': 'true'
+
+**Estrutura:**
+
+1. FILTROS (no topo):
+   - Data Início/Fim (Input DD/MM/YYYY)
+   - Empresa (Select com /api/contratos)
+   - Grupo Receita (Select com /api/grupos-receita)
+   - Botão "Filtrar"
+
+2. RESUMO (Card com totais):
+   - Total de registros
+   - Soma valores
+   - Período selecionado
+
+3. TABELA (47 colunas - scroll horizontal):
+   - data, hora, dataalta, tipo_internacao, carater_atendimento
+   - tipo_conta, atendimento, autorizacao_original
+   - tipo_validacao_clinica_externa, data_validacao_clinica_externa
+   - dt_procedimento, cod_tuss, ie_origem_proced
+   - evento_tuss, nr_seq_proc_interno, nm_proced
+   - tiposervico, gruporeceita, tipoconsulta
+   - apolice, contratante, plano, cod_beneficiario
+   - nome_paciente_prestador, beneficiario, sexo, datanascimento
+   - faixa_etaria, mat_cliente, tipodependente, titular
+   - prestador, especialidade, qtde
+   - valor (R$), valortotal (R$)
+   - setor_atendimento, se_continuidade
+   - dt_contratacao, dt_contrato, dias_adesao
+   - cid_doenca, sub_estipulante, forma_chegada
+   - vl_procedimento_coparticipacao (R$)
+
+4. PAGINAÇÃO:
+   - 100 registros por página
+   - Botões Anterior/Próxima
+
+**Código base:**
+
+```typescript
+const [selectedEmpresa, setSelectedEmpresa] = useState("todas");
+const [dataInicio, setDataInicio] = useState("01/10/2025");
+const [dataFim, setDataFim] = useState("31/10/2025");
+const [currentPage, setCurrentPage] = useState(0);
+const limit = 100;
+
+const { data: detalhamento, isLoading } = useQuery({
+  queryKey: ['/api/detalhamento', selectedEmpresa, dataInicio, dataFim, currentPage],
+  queryFn: async () => {
+    if (selectedEmpresa === "todas") return null;
+    
+    const params = new URLSearchParams({
+      dataInicio,
+      dataFim,
+      grupoReceita: "TODAS",
+      limit: String(limit),
+      offset: String(currentPage * limit)
+    });
+    
+    const response = await fetch(
+      `https://sua-url.ngrok-free.dev/api/apolices/${selectedEmpresa}/detalhamento?${params}`,
+      { headers: { 'ngrok-skip-browser-warning': 'true' } }
+    );
+    
+    return await response.json();
+  },
+  enabled: selectedEmpresa !== "todas"
+});
+
+const sinistros = detalhamento?.data || [];
+const totalRegistros = detalhamento?.pagination?.total || 0;
+```
+
+**Importante:**
+- Primeira coluna (data) fixa: `sticky left-0 bg-background`
+- Valores: `R$ {parseFloat(item.valor).toFixed(2)}`
+- Textos longos: `max-w-xs truncate` + `title={texto}`
+- Scroll horizontal: `overflow-x-auto`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

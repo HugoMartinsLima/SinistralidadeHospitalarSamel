@@ -31,10 +31,14 @@ The API is built using Node.js with the Express framework. It connects to an Ora
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.
     - **Lovable Integration**: Documentation files created for frontend integration:
-      - `PROMPT_LOVABLE_DROPDOWN_EMPRESAS.md`: Complete guide for implementing company/contract dropdown using `/api/contratos`
-      - `PROMPT_LOVABLE_EMPRESAS_RESUMIDO.txt`: Quick-start prompt for Lovable AI
-      - `PROMPT_LOVABLE_DROPDOWN_GRUPOS.md`: Guide for implementing revenue groups dropdown
-      - `API_GRUPOS_RECEITA.md`: Technical documentation for groups endpoint
+      - **Dropdowns/Filtros**:
+        - `PROMPT_LOVABLE_DROPDOWN_EMPRESAS.md`: Complete guide for implementing company/contract dropdown using `/api/contratos`
+        - `PROMPT_LOVABLE_EMPRESAS_RESUMIDO.txt`: Quick-start prompt for Lovable AI
+        - `PROMPT_LOVABLE_DROPDOWN_GRUPOS.md`: Guide for implementing revenue groups dropdown
+        - `API_GRUPOS_RECEITA.md`: Technical documentation for groups endpoint
+      - **Página de Detalhamento**:
+        - `PROMPT_LOVABLE_PAGINA_DETALHAMENTO.md`: Complete guide for building detailed claims analysis page with 47 columns table, filters (date range, company, revenue group), totals summary, and pagination using `/api/apolices/:nrContrato/detalhamento`
+        - `PROMPT_LOVABLE_DETALHAMENTO_RESUMIDO.txt`: Quick-start prompt with essential code for detalhamento page
 
 ## External Dependencies
 - **Oracle Database**: The core persistent data store for sinistros and patient information.
