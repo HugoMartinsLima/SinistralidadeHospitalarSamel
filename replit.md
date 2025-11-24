@@ -37,8 +37,9 @@ The API is built using Node.js with the Express framework. It connects to an Ora
         - `PROMPT_LOVABLE_DROPDOWN_GRUPOS.md`: Guide for implementing revenue groups dropdown
         - `API_GRUPOS_RECEITA.md`: Technical documentation for groups endpoint
       - **Página de Detalhamento**:
-        - `PROMPT_LOVABLE_PAGINA_DETALHAMENTO.md`: Complete guide for building detailed claims analysis page with 47 columns table, filters (date range, company, revenue group), totals summary, and pagination using `/api/apolices/:nrContrato/detalhamento`
+        - `PROMPT_LOVABLE_PAGINA_DETALHAMENTO.md`: Complete guide for building detailed claims analysis page with **45 columns** table, filters (date range, company, revenue group), totals summary, and pagination using `/api/apolices/:nrContrato/detalhamento`
         - `PROMPT_LOVABLE_DETALHAMENTO_RESUMIDO.txt`: Quick-start prompt with essential code for detalhamento page
+        - **IMPORTANTE**: O SQL retorna exatamente **45 colunas** (não 47). As colunas `vl_procedimento_cobrado` e `vl_procedimento_a_pagar` não existem no SELECT original.
 
 ## External Dependencies
 - **Oracle Database**: The core persistent data store for sinistros and patient information.
