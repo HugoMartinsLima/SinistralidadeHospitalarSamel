@@ -25,11 +25,16 @@ The API is built using Node.js with the Express framework. It connects to an Ora
     - **Health Check**: An endpoint (`GET /api/health`) to monitor API and database connectivity.
     - **Filtering and Pagination**: Supported on listing endpoints (`/api/sinistros`, `/api/pacientes`, `/api/apolices/:nrContrato/detalhamento`).
     - **Statistical Endpoints**: Provides general statistics on sinistros (`GET /api/estatisticas`).
-    - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with optional classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Supports pagination with total count, search by contract number or company name (razão social). Excludes contracts with classification code 3 (`cd_classif_contrato NOT IN (3)`).
+    - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with optional classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Supports pagination with total count, search by contract number or company name (razão social). Excludes contracts with classification code 3 (`cd_classif_contrato NOT IN (3)`). Returns data in **camelCase** format (`nrContrato`, `dsEstipulante`, `cdCgcEstipulante`) using quoted SQL aliases to preserve case.
     - **Detailed Policy Information**: A complex endpoint (`GET /api/apolices/:nrContrato/detalhamento`) for comprehensive policy breakdown, involving extensive SQL queries (CTEs, JOINs).
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.
+    - **Lovable Integration**: Documentation files created for frontend integration:
+      - `PROMPT_LOVABLE_DROPDOWN_EMPRESAS.md`: Complete guide for implementing company/contract dropdown using `/api/contratos`
+      - `PROMPT_LOVABLE_EMPRESAS_RESUMIDO.txt`: Quick-start prompt for Lovable AI
+      - `PROMPT_LOVABLE_DROPDOWN_GRUPOS.md`: Guide for implementing revenue groups dropdown
+      - `API_GRUPOS_RECEITA.md`: Technical documentation for groups endpoint
 
 ## External Dependencies
 - **Oracle Database**: The core persistent data store for sinistros and patient information.
