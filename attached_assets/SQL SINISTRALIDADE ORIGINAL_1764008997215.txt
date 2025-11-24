@@ -118,16 +118,16 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
      1=1 
      and ( 
           a.dt_entrada BETWEEN 
-                trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-            and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+                trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+            and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
           or b.dt_procedimento BETWEEN 
-                trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-            and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+                trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+            and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
          ) 
      AND acc.cd_convenio = 19 
      AND a.dt_cancelamento IS NULL 
  and ( 1=1 
- and ( contrato.nr_contrato in  (2444)  ) 
+ and ( contrato.nr_contrato in  (:nrContrato)  ) 
      ) 
  ), 
 	 parecer_medico_passo as ( 
@@ -404,8 +404,8 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
 	                 and pmr.ie_situacao = 'A' 
 	                 and pm.ie_situacao = 'A' 
 	                 and pm.dt_registro BETWEEN 
-	                        trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-	                     and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+	                        trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+	                     and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
 	             ) p_medico on ( 
 	                (pr_pa.cd_procedimento in ('84452019') or pr_pa.nr_seq_proc_interno = 13917) 
 	                and p_medico.nr_atendimento_parecer = pr_pa.nr_atendimento 
@@ -426,8 +426,8 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
 	             -- Filtro para garantir que os procedimentos restornos são do mes atual. 
              and ( 
                   pr_pa.dt_procedimento BETWEEN 
-                        trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-                      and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+                        trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+                      and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
                  ) 
  ), 
 	 procedimento_paciente_passo as ( 
@@ -710,7 +710,7 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
 	             and nvl(pr_pa.nr_seq_proc_interno, 0) not in (13747,13961,14064,16038,16039) 
 	             -- Filtro para garantir que os procedimentos restornos são do mes atual. 
              and ( 
-                  pr_pa.dt_procedimento BETWEEN trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY'))  and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY')) + 0.99999             ) 
+                  pr_pa.dt_procedimento BETWEEN trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY'))  and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY')) + 0.99999             ) 
              and case 
              when 
                  pr_pa.nr_seq_proc_pacote is not null 
@@ -1004,13 +1004,13 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
         join pls_guia_plano g on ( 
            (tk.cd_guia = g.cd_senha or tk.cd_guia = g.cd_guia) 
                and tk.DT_CONFIRMACAO between 
-                   trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-               and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+                   trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+               and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
            ) 
         join pls_segurado ps on (ps.nr_sequencia = g.nr_Seq_segurado) 
         join pls_contrato pc on (ps.nr_seq_contrato = pc.nr_sequencia) 
         where 1 = 1 
-    and (pc.nr_contrato in (2444)) 
+    and (pc.nr_contrato in (:nrContrato)) 
         union all 
             select 
                 gg.NR_SEQUENCIA                   nr_seq_guia_plano, 
@@ -1047,13 +1047,13 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
                         join pls_guia_plano gg on ( 
                                 (tg.NUMERO_GUIA = gg.cd_senha or tg.NUMERO_GUIA = gg.cd_guia) 
                             and tg.DATA between 
-                                trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-                            and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999  
+                                trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+                            and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999  
                    ) 
                 join pls_segurado ps on (ps.nr_sequencia = gg.nr_seq_segurado) 
                 join pls_contrato pc on (pc.nr_sequencia = ps.nr_seq_contrato) 
                 where 1=1 
-    and (pc.nr_contrato in (2444)) 
+    and (pc.nr_contrato in (:nrContrato)) 
                     and not exists ( 
                         select 
                             1 
@@ -1100,10 +1100,10 @@ to_number(acc.CD_CATEGORIA) CD_CATEGORIA,
                     and gg.NR_SEQ_PRESTADOR in (63) 
                     and pc.nr_contrato in (1270, 1271, 1295) 
                     and pgp.cd_procedimento in (20103662, 20103670) 
-    and (pc.nr_contrato in (2444)) 
+    and (pc.nr_contrato in (:nrContrato)) 
                     and gg.DT_LIBERACAO between 
-                        trunc(TO_DATE('01/10/2025', 'DD/MM/YYYY')) 
-                    and trunc(TO_DATE('31/10/2025', 'DD/MM/YYYY'))  + 0.99999 
+                        trunc(TO_DATE(:DataInicio, 'DD/MM/YYYY')) 
+                    and trunc(TO_DATE(:DataFim, 'DD/MM/YYYY'))  + 0.99999 
         ) lt_pro_exec 
         join pls_guia_plano_proc p_proc on ( 
                 lt_pro_exec.nr_seq_guia_plano = p_proc.NR_SEQ_GUIA 
