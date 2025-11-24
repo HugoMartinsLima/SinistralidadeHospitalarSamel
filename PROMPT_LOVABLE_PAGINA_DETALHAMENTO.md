@@ -15,7 +15,7 @@ Preciso criar uma página completa de "Análise de Apólices" que exiba uma **ta
 - Botão "Filtrar" para aplicar filtros
 
 ### 2. Tabela de Dados (criar nova):
-- Exibir **TODAS as 47 colunas** retornadas pela API
+- Exibir **TODAS as 45 colunas** retornadas pela API
 - Paginação (100 registros por página)
 - Loading state enquanto carrega
 - Scroll horizontal para acomodar muitas colunas
@@ -304,7 +304,7 @@ const somaValorTotal = sinistros.reduce((acc: number, item: any) =>
 )}
 ```
 
-### 4. Tabela de Dados (47 colunas):
+### 4. Tabela de Dados (45 colunas):
 
 ```tsx
 <Card>
@@ -577,7 +577,7 @@ const sinistrosFiltrados = sinistros.filter((s: any) =>
 ## ✅ Checklist de Implementação:
 
 - [ ] Filtros funcionando (data, empresa, grupo)
-- [ ] Tabela exibe todas as 47 colunas
+- [ ] Tabela exibe todas as 45 colunas
 - [ ] Primeira coluna (data) fixa ao rolar horizontalmente
 - [ ] Loading state durante carregamento
 - [ ] Totais corretos (registros e valores)

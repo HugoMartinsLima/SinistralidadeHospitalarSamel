@@ -23,7 +23,7 @@ GET https://sua-url.ngrok-free.dev/api/apolices/:nrContrato/detalhamento?dataIni
    - Soma valores
    - Período selecionado
 
-3. TABELA (47 colunas - scroll horizontal):
+3. TABELA (45 colunas - scroll horizontal):
    - data, hora, dataalta, tipo_internacao, carater_atendimento
    - tipo_conta, atendimento, autorizacao_original
    - tipo_validacao_clinica_externa, data_validacao_clinica_externa
