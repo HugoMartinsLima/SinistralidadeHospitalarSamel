@@ -108,10 +108,26 @@ export async function executeQuery<T = any>(
       ...options,
     });
     
-    return (result.rows as T[]) || [];
+    const rows = (result.rows as any[]) || [];
+    
+    // DEBUG: Logar as chaves da primeira linha para diagnóstico (apenas uma vez)
+    if (rows.length > 0) {
+      const firstRowKeys = Object.keys(rows[0]);
+      console.log('🔍 DEBUG executeQuery - Oracle retornou:');
+      console.log('   Total de registros:', rows.length);
+      console.log('   Total de colunas:', firstRowKeys.length);
+      console.log('   Primeiras 10 chaves:', firstRowKeys.slice(0, 10).join(', '));
+      console.log('   Exemplo de valores:', {
+        [firstRowKeys[0]]: rows[0][firstRowKeys[0]],
+        [firstRowKeys[1]]: rows[0][firstRowKeys[1]],
+        [firstRowKeys[2]]: rows[0][firstRowKeys[2]],
+      });
+    }
+    
+    return rows as T[];
   } catch (err) {
     console.error('❌ Erro ao executar query:', err);
-    console.error('SQL:', sql);
+    console.error('SQL:', sql.substring(0, 200) + '...'); // Limitar tamanho do SQL no log
     console.error('Binds:', binds);
     throw err;
   } finally {

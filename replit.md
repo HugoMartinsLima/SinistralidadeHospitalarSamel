@@ -27,6 +27,8 @@ The API is built using Node.js with the Express framework. It connects to an Ora
     - **Statistical Endpoints**: Provides general statistics on sinistros (`GET /api/estatisticas`).
     - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with optional classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Supports pagination with total count, search by contract number or company name (razão social). Excludes contracts with classification code 3 (`cd_classif_contrato NOT IN (3)`). Returns data in **camelCase** format (`nrContrato`, `dsEstipulante`, `cdCgcEstipulante`) using quoted SQL aliases to preserve case.
     - **Detailed Policy Information**: A complex endpoint (`GET /api/apolices/:nrContrato/detalhamento`) for comprehensive policy breakdown, involving extensive SQL queries (CTEs, JOINs).
+      - **IMPORTANTE**: Paginação é opcional - se `limit` não for enviado, retorna TODOS os registros
+      - **Normalização de chaves**: SQL usa aliases sem aspas duplas, Oracle retorna MAIÚSCULAS. As funções de detalhamento normalizam localmente para lowercase sem afetar outros endpoints.
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

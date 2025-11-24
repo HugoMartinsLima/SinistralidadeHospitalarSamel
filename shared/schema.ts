@@ -106,8 +106,8 @@ export const filtroDetalhamentoApoliceSchema = z.object({
   dataInicio: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Data início deve estar no formato DD/MM/YYYY"),
   dataFim: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Data fim deve estar no formato DD/MM/YYYY"),
   grupoReceita: z.string().optional(),
-  limit: z.number().positive().default(100),
-  offset: z.number().nonnegative().default(0),
+  limit: z.number().positive().optional(), // Sem valor padrão - retorna TODOS os registros se não fornecido
+  offset: z.number().nonnegative().optional(), // Sem valor padrão - começa do início se não fornecido
 });
 
 export type FiltroDetalhamentoApolice = z.infer<typeof filtroDetalhamentoApoliceSchema>;

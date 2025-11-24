@@ -81,7 +81,16 @@ export async function getDetalhamentoApolice(
   };
 
   // Executar query
-  const resultados = await executeQuery<DetalhamentoApoliceResult>(sql, binds);
+  const rawResultados = await executeQuery<any>(sql, binds);
+  
+  // Normalizar chaves para lowercase (SQL não usa aspas duplas, Oracle retorna MAIÚSCULAS)
+  const resultados: DetalhamentoApoliceResult[] = rawResultados.map(row => {
+    const normalized: any = {};
+    Object.keys(row).forEach(key => {
+      normalized[key.toLowerCase()] = row[key];
+    });
+    return normalized;
+  });
   
   console.log('='.repeat(80));
   console.log('🔍 DEBUG DETALHAMENTO DE APÓLICE');
@@ -125,24 +134,31 @@ export async function getDetalhamentoApolice(
     console.log('3. Total após filtro de grupoReceita: (SEM FILTRO)', filtered.length);
   }
 
-  // Aplicar paginação (sempre que limit for fornecido)
+  // Aplicar paginação APENAS se limit for explicitamente fornecido
   let beforePagination = filtered.length;
-  if (params.limit !== undefined) {
+  if (params.limit !== undefined && params.limit !== null) {
     const start = params.offset || 0;
     const end = start + params.limit;
     filtered = filtered.slice(start, end);
     console.log(`4. Total após slice/paginação (${start} a ${end}):`, filtered.length);
     console.log(`   → Intervalo solicitado: offset=${start}, limit=${params.limit}`);
+    console.log(`   ⚠️  PAGINAÇÃO ATIVA - Retornando apenas ${filtered.length} de ${beforePagination} registros`);
   } else {
-    console.log('4. Total após slice/paginação: (SEM PAGINAÇÃO)', filtered.length);
+    console.log('4. Total após paginação: (SEM PAGINAÇÃO - retornando TODOS)', filtered.length);
+    console.log(`   ✅ RETORNANDO TODOS OS ${filtered.length} REGISTROS (sem limit)`);
   }
 
   console.log('5. Total enviado no resultado final:', filtered.length);
   console.log('='.repeat(80));
-  console.log('⚠️  RESUMO DA DISCREPÂNCIA:');
+  console.log('📊 RESUMO FINAL:');
   console.log(`   Oracle retornou: ${resultados.length} registros`);
+  console.log(`   Após filtros: ${beforePagination} registros`);
   console.log(`   API vai retornar: ${filtered.length} registros`);
-  console.log(`   Diferença: ${resultados.length - filtered.length} registros`);
+  if (params.limit) {
+    console.log(`   ⚠️  Diferença devido à paginação: ${beforePagination - filtered.length} registros não enviados`);
+  } else {
+    console.log(`   ✅ Retornando TODOS os registros (paginação desabilitada)`);
+  }
   console.log('='.repeat(80));
   
   return filtered;
@@ -170,7 +186,16 @@ export async function getDetalhamentoApoliceNoDistinct(
   };
 
   // Executar query
-  const resultados = await executeQuery<DetalhamentoApoliceResult>(sql, binds);
+  const rawResultados = await executeQuery<any>(sql, binds);
+  
+  // Normalizar chaves para lowercase (SQL não usa aspas duplas, Oracle retorna MAIÚSCULAS)
+  const resultados: DetalhamentoApoliceResult[] = rawResultados.map(row => {
+    const normalized: any = {};
+    Object.keys(row).forEach(key => {
+      normalized[key.toLowerCase()] = row[key];
+    });
+    return normalized;
+  });
   
   console.log('='.repeat(80));
   console.log('🔍 DEBUG DETALHAMENTO SEM DISTINCT');
@@ -228,7 +253,7 @@ function validateColumns(record: DetalhamentoApoliceResult): void {
   }
   
   // Verificar colunas extras (pode indicar mudança no SQL)
-  const extra = recordKeys.filter((k: string) => !expectedKeys.includes(k));
+  const extra = recordKeys.filter((k: string) => !(expectedKeys as readonly string[]).includes(k));
   if (extra.length > 0) {
     console.warn(
       `⚠️  ATENÇÃO: ${extra.length} colunas extras no registro Oracle!\n` +
