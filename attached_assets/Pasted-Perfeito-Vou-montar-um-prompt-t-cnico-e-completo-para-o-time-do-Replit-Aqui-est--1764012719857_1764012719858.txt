@@ -1,0 +1,202 @@
+Perfeito! Vou montar um prompt técnico e completo para o time do Replit. Aqui está:
+
+---
+
+## 🔧 Prompt para o Time do Backend (Replit)
+
+```
+# 🚨 CORREÇÃO URGENTE - API de Detalhamento de Apólice
+
+## Problemas Identificados:
+
+1. **Registros Incompletos**: API retorna apenas 100 de 434 registros disponíveis
+2. **Colunas com valores `undefined`**: Fingerprints mostram `undefined|undefined|undefined|undefined`
+
+---
+
+## 📊 Diagnóstico Atual
+
+**Logs do Backend:**
+- Oracle retornou: 434 registros ✅
+- API enviou ao cliente: 100 registros ❌
+- Colunas nos fingerprints: todas `undefined` ❌
+
+**Parâmetros recebidos:**
+```json
+{
+  "limit": 100,
+  "offset": 0,
+  "grupoReceita": undefined,
+  "apolice": 2444,
+  "dataInicio": "01/10/2025",
+  "dataFim": "31/10/2025"
+}
+```
+
+---
+
+## ✅ SOLUÇÃO REQUERIDA
+
+### **1. REMOVER Limitação de Paginação (PRIORIDADE ALTA)**
+
+**Motivo:** Dataset pequeno (<1000 registros), melhor retornar tudo de uma vez.
+
+**Mudanças necessárias no endpoint `/api/apolices/:apolice/detalhamento`:**
+
+```javascript
+// ❌ REMOVER estas linhas:
+const limit = parseInt(req.query.limit) || 100;
+const offset = parseInt(req.query.offset) || 0;
+const paginatedData = filteredData.slice(offset, offset + limit);
+
+// ✅ ADICIONAR:
+// Retornar TODOS os dados filtrados, sem slice()
+const resultData = filteredData; // Sem paginação
+```
+
+**Resposta esperada:**
+```json
+{
+  "data": [...], // TODOS os registros (434 no exemplo)
+  "pagination": {
+    "total": 434,
+    "limit": null,    // Sem limite
+    "offset": null    // Sem offset
+  },
+  "filters": { ... }
+}
+```
+
+---
+
+### **2. CORRIGIR Colunas `undefined` (PRIORIDADE CRÍTICA)**
+
+**Causa provável:** Oracle retorna colunas em MAIÚSCULAS (`DATA`, `HORA`), mas o código JS acessa em minúsculas (`data`, `hora`).
+
+**Solução - Adicionar ao processamento dos resultados do Oracle:**
+
+```javascript
+// Logo após executar a query do Oracle:
+console.log('🔍 DEBUG - Primeira linha do Oracle:', result.rows[0]);
+console.log('🔍 DEBUG - Chaves disponíveis:', Object.keys(result.rows[0]));
+
+// Normalizar as chaves para lowercase:
+const rows = result.rows.map(row => {
+  const normalizedRow = {};
+
+  Object.keys(row).forEach(key => {
+    // Converte todas as chaves para minúsculas
+    normalizedRow[key.toLowerCase()] = row[key];
+  });
+
+  return normalizedRow;
+});
+
+// Agora usar 'rows' ao invés de 'result.rows'
+```
+
+**Alternativa (mais robusta):**
+```javascript
+const rows = result.rows.map(row => ({
+  data: row.DATA || row.data || null,
+  hora: row.HORA || row.hora || null,
+  dataalta: row.DATAALTA || row.dataalta || null,
+  tipo_internacao: row.TIPO_INTERNACAO || row.tipo_internacao || null,
+  carater_atendimento: row.CARATER_ATENDIMENTO || row.carater_atendimento || null,
+  tipo_conta: row.TIPO_CONTA || row.tipo_conta || null,
+  atendimento: row.ATENDIMENTO || row.atendimento || null,
+  autorizacao_original: row.AUTORIZACAO_ORIGINAL || row.autorizacao_original || null,
+  // ... aplicar para todas as 45 colunas
+  vl_procedimento_coparticipacao: row.VL_PROCEDIMENTO_COPARTICIPACAO || row.vl_procedimento_coparticipacao || null,
+}));
+```
+
+---
+
+### **3. REMOVER Debug Excessivo (OPCIONAL)**
+
+Os logs de fingerprint podem ser simplificados ou removidos após correção:
+```javascript
+// Manter apenas se necessário para debug:
+console.log(`✅ Total retornado: ${rows.length} registros`);
+```
+
+---
+
+## 🎯 Resultado Esperado Após Implementação
+
+**Antes:**
+```
+Oracle retornou: 434 registros
+API retornou: 100 registros (apenas primeira página)
+Colunas: undefined
+```
+
+**Depois:**
+```
+Oracle retornou: 434 registros
+API retornou: 434 registros (TODOS)
+Colunas: valores corretos preenchidos
+```
+
+---
+
+## 📝 Checklist de Implementação
+
+- [ ] Remover `limit` e `offset` do processamento
+- [ ] Remover `.slice()` da paginação
+- [ ] Adicionar normalização de colunas para lowercase
+- [ ] Testar com `apolice=2444`, `dataInicio=01/10/2025`, `dataFim=31/10/2025`
+- [ ] Verificar que todos os 434 registros são retornados
+- [ ] Verificar que as colunas têm valores (não `undefined`)
+- [ ] Atualizar logs de debug
+
+---
+
+## 🧪 Como Testar
+
+**Requisição:**
+```bash
+GET /api/apolices/2444/detalhamento?dataInicio=01/10/2025&dataFim=31/10/2025
+Header: ngrok-skip-browser-warning: true
+```
+
+**Validação da resposta:**
+```javascript
+// Deve retornar:
+response.data.length === 434  // Todos os registros
+response.data[0].data !== undefined  // Colunas preenchidas
+response.data[0].hora !== undefined
+response.pagination.total === 434
+```
+
+---
+
+## ⚡ Impacto
+
+**Performance:** ✅ Melhor (1 requisição ao invés de múltiplas)  
+**Facilidade de uso:** ✅ Frontend não precisa paginar  
+**Precisão dos dados:** ✅ Totais e exportações corretos  
+**Tamanho da resposta:** ~200KB para 434 registros (aceitável)
+
+---
+
+## 📞 Dúvidas?
+
+Se houver limitações técnicas para retornar todos os registros de uma vez, favor informar para avaliarmos alternativas.
+```
+
+---
+
+**Este prompt está pronto para ser enviado ao time do Replit!** Ele contém:
+
+✅ Diagnóstico claro do problema  
+✅ Solução técnica detalhada  
+✅ Código de exemplo  
+✅ Critérios de validação  
+✅ Checklist de implementação  
+✅ Como testar a correção
+
+Atualizar Frontend Após Correção
+Adicionar Paginação Client-Side
+Melhorar Indicadores Visuais
