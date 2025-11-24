@@ -58,15 +58,8 @@ function loadSQL(): string {
     const sqlPath = join(__dirname, '../sql/detalhamento-apolice-completo.sql');
     sqlDetalhamento = readFileSync(sqlPath, 'utf-8');
     
-    // Substituir valores fixos por bind variables
-    sqlDetalhamento = sqlDetalhamento
-      .replace(/TO_DATE\('01\/10\/2025'/g, "TO_DATE(:dataInicio")
-      .replace(/TO_DATE\('31\/10\/2025'/g, "TO_DATE(:dataFim")
-      .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato IN (:nrContrato)");
-    
-    console.log('✅ SQL de detalhamento de apólice carregado e parametrizado');
-    console.log('🔍 Primeiras 500 caracteres do SQL parametrizado:');
-    console.log(sqlDetalhamento.substring(0, 500));
+    console.log('✅ SQL de detalhamento de apólice carregado do arquivo');
+    console.log('⚠️  IMPORTANTE: SQL já possui bind variables corretas (:DataInicio, :DataFim, :nrContrato)');
   }
   
   return sqlDetalhamento;
@@ -80,10 +73,10 @@ export async function getDetalhamentoApolice(
 ): Promise<DetalhamentoApoliceResult[]> {
   const sql = loadSQL();
   
-  // Construir bind variables
+  // Construir bind variables (IMPORTANTE: SQL usa :DataInicio e :DataFim com maiúsculas)
   const binds: any = {
-    dataInicio: params.dataInicio,
-    dataFim: params.dataFim,
+    DataInicio: params.dataInicio,
+    DataFim: params.dataFim,
     nrContrato: params.nrContrato,
   };
 
@@ -166,16 +159,13 @@ export async function getDetalhamentoApoliceNoDistinct(
   const sqlPath = join(__dirname, '../sql/detalhamento-apolice-completo-no-distinct.sql');
   let sql = readFileSync(sqlPath, 'utf-8');
   
-  // Substituir valores fixos por bind variables
-  sql = sql
-    .replace(/TO_DATE\('01\/10\/2025'/g, "TO_DATE(:dataInicio")
-    .replace(/TO_DATE\('31\/10\/2025'/g, "TO_DATE(:dataFim")
-    .replace(/contrato\.nr_contrato in\s*\(\s*2444\s*\)/gi, "contrato.nr_contrato IN (:nrContrato)");
+  // IMPORTANTE: SQL já possui bind variables corretas (:DataInicio, :DataFim, :nrContrato)
+  // Não é necessário substituir nada
   
-  // Construir bind variables
+  // Construir bind variables (IMPORTANTE: SQL usa :DataInicio e :DataFim com maiúsculas)
   const binds: any = {
-    dataInicio: params.dataInicio,
-    dataFim: params.dataFim,
+    DataInicio: params.dataInicio,
+    DataFim: params.dataFim,
     nrContrato: params.nrContrato,
   };
 
@@ -197,8 +187,9 @@ export async function getDetalhamentoApoliceNoDistinct(
   return resultados;
 }
 
-// Lista canônica das 47 colunas retornadas pelo SELECT Oracle (ordem fixa)
+// Lista canônica das 45 colunas retornadas pelo SELECT Oracle (ordem fixa)
 // IMPORTANTE: oracledb com outFormat=OUT_FORMAT_OBJECT retorna chaves em lowercase
+// NOTA: Removidas colunas vl_procedimento_cobrado e vl_procedimento_a_pagar (não existem no SQL original)
 export const EXPECTED_COLUMNS = [
   'data', 'hora', 'dataalta', 'tipo_internacao', 'carater_atendimento', 'tipo_conta',
   'atendimento', 'autorizacao_original', 'tipo_validacao_clinica_externa',
@@ -207,7 +198,7 @@ export const EXPECTED_COLUMNS = [
   'tipoconsulta', 'apolice', 'contratante', 'plano', 'cod_beneficiario',
   'nome_paciente_prestador', 'beneficiario', 'sexo', 'datanascimento', 'faixa_etaria',
   'mat_cliente', 'tipodependente', 'titular', 'prestador', 'especialidade', 'qtde',
-  'valor', 'valortotal', 'vl_procedimento_cobrado', 'vl_procedimento_a_pagar',
+  'valor', 'valortotal',
   'setor_atendimento', 'se_continuidade', 'dt_contratacao',
   'dt_contrato', 'dias_adesao', 'cid_doenca', 'sub_estipulante', 'forma_chegada',
   'vl_procedimento_coparticipacao'
@@ -217,7 +208,7 @@ export const EXPECTED_COLUMNS = [
 let columnsValidated = false;
 
 /**
- * Valida que o registro contém exatamente as 47 colunas esperadas
+ * Valida que o registro contém exatamente as 45 colunas esperadas
  * Lança erro se houver colunas faltando ou extras
  */
 function validateColumns(record: DetalhamentoApoliceResult): void {
