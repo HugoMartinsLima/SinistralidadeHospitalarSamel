@@ -1,0 +1,78 @@
+Cole este prompt no Lovable para implementar o filtro de empresas:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Preciso implementar o dropdown de empresas/contratos usando a API.
+
+**API Endpoint:**
+GET https://sua-url.ngrok-free.dev/api/contratos?limit=1000
+
+**Sempre incluir header:**
+'ngrok-skip-browser-warning': 'true'
+
+**Resposta da API:**
+{
+  "data": [
+    {
+      "nrContrato": 2455,
+      "dsEstipulante": "EMPRESA XYZ LTDA"
+    }
+  ]
+}
+
+**Implementação:**
+
+```typescript
+// 1. Buscar empresas da API
+const { data: empresas, isLoading } = useQuery({
+  queryKey: ['/api/contratos'],
+  queryFn: async () => {
+    const response = await fetch(
+      'https://sua-url.ngrok-free.dev/api/contratos?limit=1000',
+      {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      }
+    );
+    const result = await response.json();
+    return result.data;
+  }
+});
+
+// 2. Implementar o Select
+<Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
+  <SelectTrigger data-testid="select-empresa">
+    <SelectValue placeholder="Todas as Empresas" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="todas">Todas as Empresas</SelectItem>
+    
+    {isLoading && (
+      <div className="p-4 text-center text-sm">Carregando...</div>
+    )}
+    
+    {!isLoading && empresas?.length === 0 && (
+      <div className="p-4 text-center text-sm">
+        Nenhuma empresa encontrada.
+      </div>
+    )}
+    
+    {!isLoading && empresas?.map((empresa: any) => (
+      <SelectItem 
+        key={empresa.nrContrato} 
+        value={String(empresa.nrContrato)}
+      >
+        {empresa.dsEstipulante}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+```
+
+**Importante:**
+- Substitua `sua-url.ngrok-free.dev` pela URL real da API
+- Use `String(empresa.nrContrato)` como value (SelectItem precisa de string)
+- Mantenha o design/estilo atual do dropdown
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
