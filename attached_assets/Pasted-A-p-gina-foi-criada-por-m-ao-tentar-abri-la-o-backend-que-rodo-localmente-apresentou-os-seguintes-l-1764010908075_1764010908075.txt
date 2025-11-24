@@ -1,0 +1,20 @@
+A página foi criada, porém ao tentar abri-la o backend que rodo localmente apresentou os seguintes logs:
+
+2:58:00 PM [express] GET /api/apolices/2444/detalhamento 500 in 1ms :: {"error":"Erro ao buscar deta…
+Erro ao buscar detalhamento de apólice: Error: ENOENT: no such file or directory, open 'C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\sql\detalhamento-apolice-completo.sql'
+at readFileSync (node:fs:441:20)
+at loadSQL (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\queries\detalhamento-apolice.ts:59:23)
+at getDetalhamentoApolice (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\queries\detalhamento-apolice.ts:81:15)
+at <anonymous> (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\routes.ts:1170:32)
+at Layer.handle [as handle_request] (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\layer.js:95:5)
+at next (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\route.js:149:13)
+at Route.dispatch (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\route.js:119:3)
+at Layer.handle [as handle_request] (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\layer.js:95:5)
+at C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\index.js:284:15
+at param (C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\node_modules\express\lib\router\index.js:365:14) {
+errno: -4058,
+code: 'ENOENT',
+syscall: 'open',
+path: 'C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\sql\detalhamento-apolice-completo.sql'
+}
+2:58:04 PM [express] GET /api/apolices/2444/detalhamento 500 in 1ms :: {"error":"Erro ao buscar deta…

@@ -1,0 +1,126 @@
+🚨 Erro no Endpoint de Detalhamento de Apólice
+Descrição do Problema
+O endpoint /api/apolices/:nrContrato/detalhamento está retornando erro 500 quando tentamos buscar dados detalhados de sinistros.
+
+Endpoint Afetado
+GET https://unhalted-tanja-unvinous.ngrok-free.dev/api/apolices/:nrContrato/detalhamento
+Requisição Realizada
+
+GET /api/apolices/2444/detalhamento?dataInicio=01%2F11%2F2024&dataFim=30%2F11%2F2024&limit=100&offset=0
+Host: unhalted-tanja-unvinous.ngrok-free.dev
+Header: ngrok-skip-browser-warning: true
+Parâmetros:
+
+nrContrato: 2444
+dataInicio: 01/11/2024 (formato DD/MM/YYYY)
+dataFim: 30/11/2024 (formato DD/MM/YYYY)
+limit: 100
+offset: 0
+Resposta de Erro Recebida
+
+{
+  "error": "Erro ao buscar detalhamento de apólice",
+  "message": "ENOENT: no such file or directory, open 'C:\\Users\\Mateus\\Desktop\\Sinistralidade Samel\\SinistralidadeHospitalarSamel\\server\\sql\\detalhamento-apolice-completo.sql'"
+}
+Status Code: 500 Internal Server Error
+
+Diagnóstico
+O servidor está tentando abrir um arquivo SQL que não existe no caminho especificado:
+
+C:\Users\Mateus\Desktop\Sinistralidade Samel\SinistralidadeHospitalarSamel\server\sql\detalhamento-apolice-completo.sql
+Ações Necessárias
+Opção 1: Criar o arquivo SQL faltante
+Criar a pasta server/sql/ se não existir
+Criar o arquivo detalhamento-apolice-completo.sql com a query apropriada
+A query deve retornar todas as 47 colunas necessárias para o frontend
+Opção 2: Modificar o endpoint para não depender de arquivo externo
+Executar a query SQL diretamente no código do endpoint, sem depender de um arquivo .sql externo.
+
+Estrutura de Resposta Esperada
+
+{
+  "data": [
+    {
+      "data": "15/11/2024",
+      "hora": "14:30:00",
+      "dataalta": "16/11/2024 10:00",
+      "tipo_internacao": "CLÍNICA",
+      "carater_atendimento": "ELETIVO",
+      "tipo_conta": "INTERNAÇÃO",
+      "atendimento": "123456",
+      "autorizacao_original": "AUTH123",
+      "tipo_validacao_clinica_externa": "",
+      "data_validacao_clinica_externa": null,
+      "dt_procedimento": "15/11/2024 14:30",
+      "cod_tuss": "10101012",
+      "ie_origem_proced": "1",
+      "evento_tuss": "CONSULTA MÉDICA",
+      "nr_seq_proc_interno": "123",
+      "nm_proced": "Consulta em Cardiologia",
+      "tiposervico": "CONSULTA",
+      "gruporeceita": "CONSULTAS ELETIVAS",
+      "tipoconsulta": "NORMAL",
+      "apolice": 2444,
+      "contratante": "EMPRESA XYZ LTDA",
+      "plano": "PLANO EXECUTIVO",
+      "cod_beneficiario": "245500001",
+      "nome_paciente_prestador": "JOÃO DA SILVA",
+      "beneficiario": "JOÃO DA SILVA",
+      "sexo": "M",
+      "datanascimento": "01/01/1980",
+      "faixa_etaria": "40-49 ANOS",
+      "mat_cliente": "12345",
+      "tipodependente": "TITULAR",
+      "titular": "JOÃO DA SILVA",
+      "prestador": "DR. CARLOS SOUZA",
+      "especialidade": "CARDIOLOGIA",
+      "qtde": 1,
+      "valor": 150.00,
+      "valortotal": 150.00,
+      "setor_atendimento": "AMBULATÓRIO",
+      "se_continuidade": "NORMAL",
+      "dt_contratacao": "01/01/2020",
+      "dt_contrato": "01/01/2020",
+      "dias_adesao": 2000,
+      "cid_doenca": "I10 - HIPERTENSÃO",
+      "sub_estipulante": "MATRIZ",
+      "forma_chegada": "DEMANDA ESPONTÂNEA",
+      "vl_procedimento_coparticipacao": 15.00
+    }
+  ],
+  "pagination": {
+    "limit": 100,
+    "offset": 0,
+    "total": 526
+  },
+  "filters": {
+    "nrContrato": 2444,
+    "dataInicio": "01/11/2024",
+    "dataFim": "30/11/2024",
+    "grupoReceita": null
+  }
+}
+Colunas Obrigatórias (47 no total)
+data, hora, dataalta, tipo_internacao, carater_atendimento, tipo_conta, atendimento
+autorizacao_original, tipo_validacao_clinica_externa, data_validacao_clinica_externa
+dt_procedimento, cod_tuss, ie_origem_proced, evento_tuss, nr_seq_proc_interno
+nm_proced, tiposervico, gruporeceita, tipoconsulta, apolice, contratante
+plano, cod_beneficiario, nome_paciente_prestador, beneficiario, sexo
+datanascimento, faixa_etaria, mat_cliente, tipodependente, titular
+prestador, especialidade, qtde, valor, valortotal, setor_atendimento
+se_continuidade, dt_contratacao, dt_contrato, dias_adesao, cid_doenca
+sub_estipulante, forma_chegada, vl_procedimento_coparticipacao
+Filtros Opcionais Suportados
+grupoReceita: String (ex: "Cirúrgico", "Consultas Eletivas", etc.)
+Se não informado ou igual a "TODAS", deve retornar todos os grupos
+Outros Endpoints Funcionando Corretamente ✅
+GET /api/contratos?limit=10000 - OK
+GET /api/grupos-receita - OK
+Prioridade
+🔴 ALTA - Bloqueando funcionalidade crítica do frontend
+
+Informações Adicionais
+Ambiente: Replit + ngrok
+Contrato de teste: 2444 (2E DESPACHOS ADUANEIROS LTDA)
+Frontend esperando formato de data: DD/MM/YYYY
+Frontend já implementado e aguardando correção do backend
