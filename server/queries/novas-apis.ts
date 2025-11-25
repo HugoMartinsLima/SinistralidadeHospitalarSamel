@@ -74,53 +74,57 @@ export interface BuscaPacienteResult {
 export async function buscaPacientePorNome(
   params: BuscaPacienteParams
 ): Promise<BuscaPacienteResult[]> {
-  let sql = getClonedSQL();
-  
-  sql = sql.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  
-  const sqlAntes = sql.includes(':nrContrato');
-  
-  const blocoOriginal = /and\s*\(\s*1=1\s*\n\s*and\s*\(\s*contrato\.nr_contrato\s+in\s+\(:nrContrato\)\s*\)\s*\n\s*\)/i;
-  const matchBloco = sql.match(blocoOriginal);
-  
-  if (matchBloco) {
-    sql = sql.replace(blocoOriginal,
-      `AND (
-        UPPER(tasy.obter_nome_pf(a.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
-        OR UPPER(tasy.obter_nome_pf(seg.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
-      )`
-    );
-  }
-  
-  sql = sql.replace(/:nrContrato/g, '0');
-
   console.log('='.repeat(80));
-  console.log('🔍 BUSCA POR PACIENTE');
+  console.log('🔍 BUSCA POR PACIENTE (OTIMIZADA - 2 ETAPAS)');
   console.log('='.repeat(80));
   console.log('Nome buscado:', params.nome);
   console.log('Período:', params.dataInicio, 'a', params.dataFim);
   console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
-  console.log('Bloco de contrato encontrado:', matchBloco ? 'SIM ✓' : 'NÃO ✗');
-  console.log('Contém :nomePaciente após substituição:', sql.includes(':nomePaciente') ? 'SIM ✓' : 'NÃO ✗');
-
-  const placeholdersRestantes = sql.match(/:[A-Za-z][A-Za-z0-9_]*/g) || [];
-  const placeholdersFiltrados = placeholdersRestantes.filter(p => 
-    !p.match(/:MI$/i) && !p.match(/:SS$/i)
-  );
-  console.log('Placeholders restantes:', placeholdersFiltrados.length);
-  console.log('Lista:', Array.from(new Set(placeholdersFiltrados)).join(', '));
 
   const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
   const safeDataFim = validateAndSanitizeDate(params.dataFim);
+
+  const sqlBuscaPessoas = `
+    SELECT DISTINCT pf.cd_pessoa_fisica as "cdPessoaFisica"
+    FROM tasy.pessoa_fisica pf
+    WHERE UPPER(pf.nm_pessoa_fisica) LIKE UPPER(:nomePaciente)
+    FETCH FIRST 100 ROWS ONLY
+  `;
+
+  console.log('ETAPA 1: Buscando cd_pessoa_fisica por nome...');
+  const pessoasEncontradas = await executeQuery<{cdPessoaFisica: number}>(sqlBuscaPessoas, {
+    nomePaciente: `%${params.nome}%`
+  });
+
+  console.log(`Pessoas encontradas: ${pessoasEncontradas.length}`);
+
+  if (pessoasEncontradas.length === 0) {
+    console.log('Nenhuma pessoa encontrada com este nome');
+    console.log('='.repeat(80));
+    return [];
+  }
+
+  const idsPessoas = pessoasEncontradas.map(p => p.cdPessoaFisica);
+  console.log('IDs encontrados:', idsPessoas.slice(0, 10).join(', ') + (idsPessoas.length > 10 ? '...' : ''));
+
+  console.log('ETAPA 2: Buscando detalhamento para as pessoas encontradas...');
   
+  let sql = getClonedSQL();
+  sql = sql.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  const idsLiteral = idsPessoas.join(', ');
+  
+  const blocoOriginal = /and\s*\(\s*1=1\s*\n\s*and\s*\(\s*contrato\.nr_contrato\s+in\s+\(:nrContrato\)\s*\)\s*\n\s*\)/i;
+  sql = sql.replace(blocoOriginal,
+    `AND (a.cd_pessoa_fisica IN (${idsLiteral}) OR seg.cd_pessoa_fisica IN (${idsLiteral}))`
+  );
+  
+  sql = sql.replace(/:nrContrato/g, '0');
+
   const baseBinds: any = {
     DataInicio: safeDataInicio,
     DataFim: safeDataFim,
   };
-  
-  if (sql.includes(':nomePaciente')) {
-    baseBinds.nomePaciente = `%${params.nome}%`;
-  }
 
   const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, baseBinds);
   console.log('Bind variables expandidos:', Object.keys(expandedBinds).length);
