@@ -209,14 +209,18 @@ export async function getDetalhamentoConsolidadoPorClassificacao(
   const inListValues = contratosIncluidos.map(c => Number(c)).join(', ');
   
   sql = sql.replace(
-    /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/,
+    /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/i,
     `AND contrato.nr_contrato IN (${inListValues})`
   );
   
-  sql = sql.replace(
-    /\(pc\.nr_contrato in \(:nrContrato\)\)/g,
-    `(pc.nr_contrato IN (${inListValues}))`
+  sql = sql.replace(/:nrContrato/g, inListValues);
+
+  const placeholdersRestantes = sql.match(/:[A-Za-z][A-Za-z0-9_]*/g) || [];
+  const placeholdersFiltrados = placeholdersRestantes.filter(p => 
+    !p.match(/:MI$/i) && !p.match(/:SS$/i)
   );
+  console.log('Placeholders restantes após substituições:', placeholdersFiltrados.length);
+  console.log('Lista:', Array.from(new Set(placeholdersFiltrados)).join(', '));
 
   const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
   const safeDataFim = validateAndSanitizeDate(params.dataFim);
