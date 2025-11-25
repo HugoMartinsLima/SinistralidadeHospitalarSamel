@@ -161,26 +161,22 @@ export async function getDetalhamentoConsolidadoPorClassificacao(
 
   let sql = getClonedSQL();
   
-  const placeholders = contratosIncluidos.map((_, i) => `:contrato${i}`).join(', ');
+  const inListValues = contratosIncluidos.map(c => Number(c)).join(', ');
   
   sql = sql.replace(
     /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/,
-    `AND contrato.nr_contrato IN (${placeholders})`
+    `AND contrato.nr_contrato IN (${inListValues})`
   );
   
   sql = sql.replace(
     /\(pc\.nr_contrato in \(:nrContrato\)\)/g,
-    `(pc.nr_contrato IN (${placeholders}))`
+    `(pc.nr_contrato IN (${inListValues}))`
   );
 
   const binds: any = {
     DataInicio: params.dataInicio,
     DataFim: params.dataFim,
   };
-  
-  contratosIncluidos.forEach((contrato, i) => {
-    binds[`contrato${i}`] = contrato;
-  });
 
   const rawResultados = await executeQuery<any>(sql, binds);
   
