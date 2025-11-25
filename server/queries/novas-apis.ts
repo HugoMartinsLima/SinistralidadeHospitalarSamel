@@ -77,17 +77,28 @@ export async function buscaPacientePorNome(
   let sql = getClonedSQL();
   
   sql = sql.replace(
-    /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/,
+    /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/i,
     `AND (
       UPPER(tasy.obter_nome_pf(a.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
       OR UPPER(tasy.obter_nome_pf(seg.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
     )`
   );
   
-  sql = sql.replace(
-    /\(pc\.nr_contrato in \(:nrContrato\)\)/g,
-    `(1=1)`
+  sql = sql.replace(/:nrContrato/g, '0');
+
+  console.log('='.repeat(80));
+  console.log('🔍 BUSCA POR PACIENTE');
+  console.log('='.repeat(80));
+  console.log('Nome buscado:', params.nome);
+  console.log('Período:', params.dataInicio, 'a', params.dataFim);
+  console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
+
+  const placeholdersRestantes = sql.match(/:[A-Za-z][A-Za-z0-9_]*/g) || [];
+  const placeholdersFiltrados = placeholdersRestantes.filter(p => 
+    !p.match(/:MI$/i) && !p.match(/:SS$/i)
   );
+  console.log('Placeholders restantes:', placeholdersFiltrados.length);
+  console.log('Lista:', Array.from(new Set(placeholdersFiltrados)).join(', '));
 
   const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
   const safeDataFim = validateAndSanitizeDate(params.dataFim);
@@ -97,13 +108,6 @@ export async function buscaPacientePorNome(
     DataFim: safeDataFim,
     nomePaciente: `%${params.nome}%`,
   };
-
-  console.log('='.repeat(80));
-  console.log('🔍 BUSCA POR PACIENTE');
-  console.log('='.repeat(80));
-  console.log('Nome buscado:', params.nome);
-  console.log('Período:', params.dataInicio, 'a', params.dataFim);
-  console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
 
   const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, baseBinds);
   console.log('Bind variables expandidos:', Object.keys(expandedBinds).length);
