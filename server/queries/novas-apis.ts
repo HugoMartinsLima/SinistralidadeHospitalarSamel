@@ -3,6 +3,45 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { executeQuery } from '../oracle-db';
 
+const DATE_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
+
+function validateAndSanitizeDate(dateStr: string): string {
+  if (!DATE_REGEX.test(dateStr)) {
+    throw new Error(`Formato de data inválido: ${dateStr}. Use DD/MM/YYYY`);
+  }
+  const [day, month, year] = dateStr.split('/').map(Number);
+  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
+    throw new Error(`Data inválida: ${dateStr}`);
+  }
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
+function expandBindPlaceholders(
+  sql: string,
+  binds: Record<string, any>
+): { sql: string; binds: Record<string, any> } {
+  const expandedBinds: Record<string, any> = {};
+  let expandedSql = sql;
+
+  for (const [key, value] of Object.entries(binds)) {
+    const regex = new RegExp(`:${key}(?![A-Za-z0-9_])`, 'g');
+    let counter = 0;
+    
+    expandedSql = expandedSql.replace(regex, () => {
+      const uniqueKey = `${key}_${counter}`;
+      expandedBinds[uniqueKey] = value;
+      counter++;
+      return `:${uniqueKey}`;
+    });
+    
+    if (counter === 0) {
+      expandedBinds[key] = value;
+    }
+  }
+
+  return { sql: expandedSql, binds: expandedBinds };
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -50,9 +89,12 @@ export async function buscaPacientePorNome(
     `(1=1)`
   );
 
-  const binds: any = {
-    DataInicio: params.dataInicio,
-    DataFim: params.dataFim,
+  const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
+  const safeDataFim = validateAndSanitizeDate(params.dataFim);
+  
+  const baseBinds: any = {
+    DataInicio: safeDataInicio,
+    DataFim: safeDataFim,
     nomePaciente: `%${params.nome}%`,
   };
 
@@ -63,7 +105,10 @@ export async function buscaPacientePorNome(
   console.log('Período:', params.dataInicio, 'a', params.dataFim);
   console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
 
-  const rawResultados = await executeQuery<any>(sql, binds);
+  const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, baseBinds);
+  console.log('Bind variables expandidos:', Object.keys(expandedBinds).length);
+
+  const rawResultados = await executeQuery<any>(expandedSql, expandedBinds);
   
   const resultados: BuscaPacienteResult[] = rawResultados.map(row => {
     const normalized: any = {};
@@ -173,12 +218,19 @@ export async function getDetalhamentoConsolidadoPorClassificacao(
     `(pc.nr_contrato IN (${inListValues}))`
   );
 
-  const binds: any = {
-    DataInicio: params.dataInicio,
-    DataFim: params.dataFim,
+  const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
+  const safeDataFim = validateAndSanitizeDate(params.dataFim);
+  
+  const baseBinds = {
+    DataInicio: safeDataInicio,
+    DataFim: safeDataFim,
   };
+  
+  const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, baseBinds);
 
-  const rawResultados = await executeQuery<any>(sql, binds);
+  console.log('Bind variables expandidos:', Object.keys(expandedBinds).length);
+
+  const rawResultados = await executeQuery<any>(expandedSql, expandedBinds);
   
   const resultados: BuscaPacienteResult[] = rawResultados.map(row => {
     const normalized: any = {};
