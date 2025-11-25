@@ -29,6 +29,16 @@ The API is built using Node.js with the Express framework. It connects to an Ora
     - **Detailed Policy Information**: A complex endpoint (`GET /api/apolices/:nrContrato/detalhamento`) for comprehensive policy breakdown, involving extensive SQL queries (CTEs, JOINs).
       - **IMPORTANTE**: Paginação é opcional - se `limit` não for enviado, retorna TODOS os registros
       - **Normalização de chaves**: SQL usa aliases sem aspas duplas, Oracle retorna MAIÚSCULAS. As funções de detalhamento normalizam localmente para lowercase sem afetar outros endpoints.
+    - **Busca de Paciente (Pessoa Física)**: `GET /api/pacientes/busca` - Busca registros de um paciente/beneficiário em TODOS os contratos
+      - Query params: `nome` (obrigatório, min 3 chars), `dataInicio`, `dataFim`, `grupoReceita` (opcional)
+      - Busca por LIKE '%nome%' nos campos BENEFICIARIO e NOME_PACIENTE_PRESTADOR
+      - Resposta: `{ data: [...], total: N, paciente: "NOME BUSCADO" }`
+    - **Classificações de Contratos**: `GET /api/classificacoes` - Lista classificações com contagem de contratos
+      - Resposta: `{ data: [{ dsClassificacao: "PLURAL PME", quantidade: 8 }], total: N }`
+    - **Detalhamento Consolidado por Classificação**: `GET /api/classificacao/:dsClassificacao/detalhamento-consolidado`
+      - Query params: `dataInicio`, `dataFim`, `grupoReceita` (opcional)
+      - Consolida dados de todos os contratos de uma classificação
+      - Resposta: `{ data: [...], total: N, classificacao: "...", contratos_incluidos: N, lista_contratos: [...] }`
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

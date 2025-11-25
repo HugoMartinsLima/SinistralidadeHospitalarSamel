@@ -5,6 +5,7 @@ import { executeQuery, executeUpdate, testConnection, initializePool } from "./o
 import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato, FiltroDetalhamentoApolice } from "@shared/schema";
 import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, filtroDetalhamentoApoliceSchema } from "@shared/schema";
 import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamentoApoliceDeduplicado } from "./queries/detalhamento-apolice";
+import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao } from "./queries/novas-apis";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -1207,6 +1208,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // NOVAS APIs PARA LOVABLE
+  // ============================================
+
+  // API 1: Busca de paciente por nome em todos os contratos (ALTA PRIORIDADE)
+  app.get("/api/pacientes/busca", async (req, res) => {
+    try {
+      const nome = req.query.nome as string;
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!nome || nome.trim().length < 3) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "O nome do paciente deve ter pelo menos 3 caracteres"
+        });
+      }
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultados = await buscaPacientePorNome({
+        nome: nome.trim(),
+        dataInicio,
+        dataFim,
+        grupoReceita
+      });
+
+      res.json({
+        data: resultados,
+        total: resultados.length,
+        paciente: nome.trim().toUpperCase(),
+        filters: {
+          dataInicio,
+          dataFim,
+          grupoReceita: grupoReceita || 'TODOS'
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar paciente:', error);
+      res.status(500).json({
+        error: "Erro ao buscar paciente",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // API 2: Listar classificações de contratos com contagem
+  app.get("/api/classificacoes", async (req, res) => {
+    try {
+      const classificacoes = await listarClassificacoes();
+
+      res.json({
+        data: classificacoes,
+        total: classificacoes.length
+      });
+    } catch (error) {
+      console.error('Erro ao listar classificações:', error);
+      res.status(500).json({
+        error: "Erro ao listar classificações",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // API 3: Detalhamento consolidado por classificação
+  app.get("/api/classificacao/:dsClassificacao/detalhamento-consolidado", async (req, res) => {
+    try {
+      const dsClassificacao = decodeURIComponent(req.params.dsClassificacao);
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const { data, contratosIncluidos } = await getDetalhamentoConsolidadoPorClassificacao({
+        dsClassificacao,
+        dataInicio,
+        dataFim,
+        grupoReceita
+      });
+
+      res.json({
+        data,
+        total: data.length,
+        classificacao: dsClassificacao,
+        contratos_incluidos: contratosIncluidos.length,
+        lista_contratos: contratosIncluidos,
+        filters: {
+          dataInicio,
+          dataFim,
+          grupoReceita: grupoReceita || 'TODOS'
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar detalhamento consolidado:', error);
+      res.status(500).json({
+        error: "Erro ao buscar detalhamento consolidado",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -1230,6 +1344,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/contratos/:nrContrato", description: "Buscar contrato por número" },
         { method: "GET", path: "/api/grupos-receita", description: "Listar grupos de receita ativos" },
         { method: "GET", path: "/api/apolices/:nrContrato/detalhamento", description: "Buscar detalhamento de apólice (procedimentos e atendimentos)" },
+        { method: "GET", path: "/api/pacientes/busca", description: "Buscar paciente por nome em todos os contratos (query: nome, dataInicio, dataFim, grupoReceita)" },
+        { method: "GET", path: "/api/classificacoes", description: "Listar classificações de contratos com contagem" },
+        { method: "GET", path: "/api/classificacao/:dsClassificacao/detalhamento-consolidado", description: "Detalhamento consolidado por classificação (query: dataInicio, dataFim, grupoReceita)" },
       ]
     });
   });
