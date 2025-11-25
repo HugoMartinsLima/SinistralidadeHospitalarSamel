@@ -76,8 +76,10 @@ export async function buscaPacientePorNome(
 ): Promise<BuscaPacienteResult[]> {
   let sql = getClonedSQL();
   
+  const sqlAntes = sql.includes(':nrContrato');
+  
   sql = sql.replace(
-    /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/i,
+    /and \( 1=1\s*\r?\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\r?\n\s*\)/i,
     `AND (
       UPPER(tasy.obter_nome_pf(a.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
       OR UPPER(tasy.obter_nome_pf(seg.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
@@ -92,6 +94,8 @@ export async function buscaPacientePorNome(
   console.log('Nome buscado:', params.nome);
   console.log('Período:', params.dataInicio, 'a', params.dataFim);
   console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
+  console.log('Substituição do bloco de contrato:', sqlAntes ? 'TENTADA' : 'N/A');
+  console.log('Contém :nomePaciente após substituição:', sql.includes(':nomePaciente') ? 'SIM ✓' : 'NÃO ✗');
 
   const placeholdersRestantes = sql.match(/:[A-Za-z][A-Za-z0-9_]*/g) || [];
   const placeholdersFiltrados = placeholdersRestantes.filter(p => 
@@ -106,8 +110,11 @@ export async function buscaPacientePorNome(
   const baseBinds: any = {
     DataInicio: safeDataInicio,
     DataFim: safeDataFim,
-    nomePaciente: `%${params.nome}%`,
   };
+  
+  if (sql.includes(':nomePaciente')) {
+    baseBinds.nomePaciente = `%${params.nome}%`;
+  }
 
   const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, baseBinds);
   console.log('Bind variables expandidos:', Object.keys(expandedBinds).length);
