@@ -302,7 +302,7 @@ export async function getResumoContratos(
   params: ResumoContratosParams
 ): Promise<ResumoContratoItem[]> {
   console.log('='.repeat(80));
-  console.log('📊 RESUMO DE CONTRATOS (usando detalhamento completo)');
+  console.log('📊 RESUMO DE CONTRATOS (agregação em memória)');
   console.log('='.repeat(80));
   console.log('Período:', params.dataInicio, 'a', params.dataFim);
   console.log('Contratos:', params.contratos || 'TODOS');
@@ -326,53 +326,97 @@ export async function getResumoContratos(
   sql = sql.replace(blocoOriginal, `AND (${contratosFilter})`);
   sql = sql.replace(/:nrContrato/g, '0');
 
-  const resumoSql = `
-    WITH detalhamento AS (
-      ${sql}
-    )
-    SELECT 
-      apolice as "nrContrato",
-      MAX(contratante) as "dsEstipulante",
-      COALESCE(SUM(valortotal), 0) as "sinistroTotal",
-      COALESCE(SUM(CASE WHEN UPPER(tipodependente) = 'TITULAR' THEN valortotal ELSE 0 END), 0) as "sinistroTitular",
-      COALESCE(SUM(CASE WHEN UPPER(tipodependente) = 'DEPENDENTE' THEN valortotal ELSE 0 END), 0) as "sinistrosDependentes",
-      COUNT(DISTINCT cod_beneficiario) as "quantidadeBeneficiarios",
-      COUNT(DISTINCT atendimento) as "quantidadeAtendimentos"
-    FROM detalhamento
-    ${params.grupoReceita ? `WHERE UPPER(gruporeceita) = UPPER(:grupoReceita)` : ''}
-    GROUP BY apolice
-    ORDER BY "sinistroTotal" DESC
-  `;
-
   const binds: Record<string, any> = {
     DataInicio: safeDataInicio,
     DataFim: safeDataFim,
   };
-  
-  if (params.grupoReceita) {
-    binds.grupoReceita = params.grupoReceita;
-  }
 
-  const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(resumoSql, binds);
+  const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(sql, binds);
   
-  console.log('Executando query de resumo (baseada no detalhamento)...');
+  console.log('Executando query de detalhamento para agregação...');
   console.log('Bind variables:', Object.keys(expandedBinds).length);
 
   const rawResultados = await executeQuery<any>(expandedSql, expandedBinds);
+  console.log('Registros retornados do detalhamento:', rawResultados.length);
 
-  const resultados: ResumoContratoItem[] = rawResultados.map(row => ({
-    nrContrato: Number(row.nrContrato),
-    dsEstipulante: row.dsEstipulante || '',
-    sinistroTotal: Number(row.sinistroTotal) || 0,
-    sinistroTitular: Number(row.sinistroTitular) || 0,
-    sinistrosDependentes: Number(row.sinistrosDependentes) || 0,
-    premio: null,
-    sinistralidade: null,
-    quantidadeBeneficiarios: Number(row.quantidadeBeneficiarios) || 0,
-    quantidadeAtendimentos: Number(row.quantidadeAtendimentos) || 0,
-  }));
+  const normalizedRows = rawResultados.map(row => {
+    const normalized: any = {};
+    Object.keys(row).forEach(key => {
+      normalized[key.toLowerCase()] = row[key];
+    });
+    return normalized;
+  });
 
-  console.log('Contratos encontrados:', resultados.length);
+  let filteredRows = normalizedRows;
+  if (params.grupoReceita) {
+    const grupoUpper = params.grupoReceita.toUpperCase();
+    filteredRows = normalizedRows.filter(r => 
+      r.gruporeceita && r.gruporeceita.toUpperCase() === grupoUpper
+    );
+    console.log(`Filtrado por grupo receita "${params.grupoReceita}": ${normalizedRows.length} -> ${filteredRows.length}`);
+  }
+
+  const contratosMap = new Map<number, {
+    nrContrato: number;
+    dsEstipulante: string;
+    sinistroTotal: number;
+    sinistroTitular: number;
+    sinistrosDependentes: number;
+    beneficiarios: Set<string>;
+    atendimentos: Set<string>;
+  }>();
+
+  for (const row of filteredRows) {
+    const nrContrato = Number(row.apolice) || 0;
+    if (nrContrato === 0) continue;
+
+    if (!contratosMap.has(nrContrato)) {
+      contratosMap.set(nrContrato, {
+        nrContrato,
+        dsEstipulante: row.contratante || '',
+        sinistroTotal: 0,
+        sinistroTitular: 0,
+        sinistrosDependentes: 0,
+        beneficiarios: new Set(),
+        atendimentos: new Set(),
+      });
+    }
+
+    const contrato = contratosMap.get(nrContrato)!;
+    const valorTotal = Number(row.valortotal) || 0;
+    const tipoDependente = (row.tipodependente || '').toUpperCase();
+
+    contrato.sinistroTotal += valorTotal;
+    
+    if (tipoDependente === 'TITULAR') {
+      contrato.sinistroTitular += valorTotal;
+    } else if (tipoDependente === 'DEPENDENTE') {
+      contrato.sinistrosDependentes += valorTotal;
+    }
+
+    if (row.cod_beneficiario) {
+      contrato.beneficiarios.add(String(row.cod_beneficiario));
+    }
+    if (row.atendimento) {
+      contrato.atendimentos.add(String(row.atendimento));
+    }
+  }
+
+  const resultados: ResumoContratoItem[] = Array.from(contratosMap.values())
+    .map(c => ({
+      nrContrato: c.nrContrato,
+      dsEstipulante: c.dsEstipulante,
+      sinistroTotal: Math.round(c.sinistroTotal * 100) / 100,
+      sinistroTitular: Math.round(c.sinistroTitular * 100) / 100,
+      sinistrosDependentes: Math.round(c.sinistrosDependentes * 100) / 100,
+      premio: null,
+      sinistralidade: null,
+      quantidadeBeneficiarios: c.beneficiarios.size,
+      quantidadeAtendimentos: c.atendimentos.size,
+    }))
+    .sort((a, b) => b.sinistroTotal - a.sinistroTotal);
+
+  console.log('Contratos agregados:', resultados.length);
   console.log('='.repeat(80));
 
   return resultados;
