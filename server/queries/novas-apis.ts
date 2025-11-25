@@ -44,6 +44,11 @@ export async function buscaPacientePorNome(
       OR UPPER(tasy.obter_nome_pf(seg.cd_pessoa_fisica)) LIKE UPPER(:nomePaciente)
     )`
   );
+  
+  sql = sql.replace(
+    /\(pc\.nr_contrato in \(:nrContrato\)\)/g,
+    `(1=1)`
+  );
 
   const binds: any = {
     DataInicio: params.dataInicio,
@@ -157,9 +162,15 @@ export async function getDetalhamentoConsolidadoPorClassificacao(
   let sql = getClonedSQL();
   
   const placeholders = contratosIncluidos.map((_, i) => `:contrato${i}`).join(', ');
+  
   sql = sql.replace(
     /and \( 1=1\s*\nand \( contrato\.nr_contrato in  \(:nrContrato\)  \)\s*\)/,
     `AND contrato.nr_contrato IN (${placeholders})`
+  );
+  
+  sql = sql.replace(
+    /\(pc\.nr_contrato in \(:nrContrato\)\)/g,
+    `(pc.nr_contrato IN (${placeholders}))`
   );
 
   const binds: any = {
