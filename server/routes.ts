@@ -216,6 +216,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Busca de paciente por nome em todos os contratos (DEVE VIR ANTES de /api/pacientes/:id)
+  app.get("/api/pacientes/busca", async (req, res) => {
+    try {
+      const nome = req.query.nome as string;
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!nome || nome.trim().length < 3) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "O nome do paciente deve ter pelo menos 3 caracteres"
+        });
+      }
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultados = await buscaPacientePorNome({
+        nome: nome.trim(),
+        dataInicio,
+        dataFim,
+        grupoReceita
+      });
+
+      res.json({
+        data: resultados,
+        total: resultados.length,
+        paciente: nome.trim().toUpperCase(),
+        filters: {
+          dataInicio,
+          dataFim,
+          grupoReceita: grupoReceita || 'TODOS'
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar paciente:', error);
+      res.status(500).json({
+        error: "Erro ao buscar paciente",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Obter detalhes de um paciente específico
   app.get("/api/pacientes/:id", async (req, res) => {
     try {
@@ -1211,54 +1259,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   // NOVAS APIs PARA LOVABLE
   // ============================================
-
-  // API 1: Busca de paciente por nome em todos os contratos (ALTA PRIORIDADE)
-  app.get("/api/pacientes/busca", async (req, res) => {
-    try {
-      const nome = req.query.nome as string;
-      const dataInicio = req.query.dataInicio as string;
-      const dataFim = req.query.dataFim as string;
-      const grupoReceita = req.query.grupoReceita as string | undefined;
-
-      if (!nome || nome.trim().length < 3) {
-        return res.status(400).json({
-          error: "Parâmetro inválido",
-          message: "O nome do paciente deve ter pelo menos 3 caracteres"
-        });
-      }
-
-      if (!dataInicio || !dataFim) {
-        return res.status(400).json({
-          error: "Parâmetros obrigatórios",
-          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
-        });
-      }
-
-      const resultados = await buscaPacientePorNome({
-        nome: nome.trim(),
-        dataInicio,
-        dataFim,
-        grupoReceita
-      });
-
-      res.json({
-        data: resultados,
-        total: resultados.length,
-        paciente: nome.trim().toUpperCase(),
-        filters: {
-          dataInicio,
-          dataFim,
-          grupoReceita: grupoReceita || 'TODOS'
-        }
-      });
-    } catch (error) {
-      console.error('Erro ao buscar paciente:', error);
-      res.status(500).json({
-        error: "Erro ao buscar paciente",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
-    }
-  });
 
   // API 2: Listar classificações de contratos com contagem
   app.get("/api/classificacoes", async (req, res) => {
