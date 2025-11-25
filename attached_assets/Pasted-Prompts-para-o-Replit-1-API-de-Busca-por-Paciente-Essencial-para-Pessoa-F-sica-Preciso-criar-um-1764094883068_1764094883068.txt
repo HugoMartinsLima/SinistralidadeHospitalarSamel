@@ -1,0 +1,117 @@
+Prompts para o Replit
+1. API de Busca por Paciente (Essencial para Pessoa Física)
+Preciso criar uma nova API para buscar registros de um paciente/beneficiário em todos os contratos.
+
+**Endpoint:** GET /api/pacientes/busca
+
+**Query Parameters:**
+- nome: string (obrigatório) - Nome do paciente para buscar (busca parcial, case-insensitive)
+- dataInicio: string (obrigatório) - Data início no formato DD/MM/YYYY
+- dataFim: string (obrigatório) - Data fim no formato DD/MM/YYYY
+- grupoReceita: string (opcional) - Filtrar por grupo de receita específico
+
+**Comportamento:**
+- Buscar na tabela de detalhamento/sinistros onde o campo BENEFICIARIO ou NOME_PACIENTE_PRESTADOR contenha o nome informado (LIKE '%nome%', case-insensitive)
+- Filtrar pelo intervalo de datas
+- Se grupoReceita for informado, filtrar também por esse campo
+- Retornar todos os registros encontrados, incluindo o número do contrato (NR_CONTRATO/APOLICE) e nome do contratante (DS_ESTIPULANTE) para identificar de qual contrato veio cada registro
+
+**Resposta:**
+{
+  "data": [
+    {
+      // Todos os campos do detalhamento
+      "BENEFICIARIO": "...",
+      "APOLICE": 1234,
+      "CONTRATANTE": "Nome da Empresa",
+      "GRUPORECEITA": "...",
+      "NM_PROCED": "...",
+      "VALORTOTAL": "...",
+      "DATA": "...",
+      // ... demais campos
+    }
+  ],
+  "total": 150,
+  "paciente": "NOME BUSCADO"
+}
+
+**SQL aproximado:**
+SELECT d.*, c.ds_estipulante as CONTRATANTE
+FROM detalhamento d
+JOIN contratos c ON d.nr_contrato = c.nr_contrato
+WHERE (UPPER(d.beneficiario) LIKE UPPER('%{nome}%') 
+   OR UPPER(d.nome_paciente_prestador) LIKE UPPER('%{nome}%'))
+  AND d.data BETWEEN '{dataInicio}' AND '{dataFim}'
+  [AND d.gruporeceita = '{grupoReceita}']
+ORDER BY d.data DESC
+2. API de Detalhamento Consolidado por Classificação (Opcional, mas melhora performance)
+Preciso criar uma API para buscar o detalhamento consolidado de todos os contratos de uma mesma classificação.
+
+**Endpoint:** GET /api/classificacao/{dsClassificacao}/detalhamento-consolidado
+
+**Query Parameters:**
+- dataInicio: string (obrigatório) - Data início no formato DD/MM/YYYY
+- dataFim: string (obrigatório) - Data fim no formato DD/MM/YYYY
+- grupoReceita: string (opcional) - Filtrar por grupo de receita específico
+
+**Comportamento:**
+- Buscar todos os contratos que possuem a classificação informada
+- Para cada contrato, buscar os registros de detalhamento no intervalo de datas
+- Consolidar todos os resultados em um único array
+- Incluir identificação do contrato em cada registro
+
+**Resposta:**
+{
+  "data": [
+    {
+      // Campos do detalhamento
+      "NR_CONTRATO": 1234,
+      "DS_ESTIPULANTE": "Nome da Empresa",
+      // ... demais campos
+    }
+  ],
+  "total": 5000,
+  "classificacao": "PLURAL PME",
+  "contratos_incluidos": 8
+}
+
+**SQL aproximado:**
+SELECT d.*, c.nr_contrato, c.ds_estipulante
+FROM detalhamento d
+JOIN contratos c ON d.nr_contrato = c.nr_contrato
+WHERE c.ds_classificacao = '{dsClassificacao}'
+  AND d.data BETWEEN '{dataInicio}' AND '{dataFim}'
+  [AND d.gruporeceita = '{grupoReceita}']
+ORDER BY c.nr_contrato, d.data DESC
+3. API de Lista de Classificações com Contagem (Opcional, melhora UX)
+Preciso de uma API que retorne as classificações de contratos com a contagem de cada uma.
+
+**Endpoint:** GET /api/classificacoes
+
+**Resposta:**
+{
+  "data": [
+    {
+      "dsClassificacao": "PLURAL PME",
+      "quantidade": 8,
+      "contratos": [1234, 2345, 3456, ...] // opcional
+    },
+    {
+      "dsClassificacao": "PLURAL EMPRESARIAL",
+      "quantidade": 12
+    }
+  ],
+  "total": 5
+}
+
+**SQL:**
+SELECT ds_classificacao as dsClassificacao, COUNT(*) as quantidade
+FROM contratos
+WHERE ds_classificacao IS NOT NULL
+GROUP BY ds_classificacao
+ORDER BY quantidade DESC
+Prioridade
+API	Prioridade	Motivo
+/api/pacientes/busca	ALTA	Essencial para aba Pessoa Física funcionar bem
+/api/classificacao/{dsClassificacao}/detalhamento-consolidado	Média	Melhora performance, mas dá para fazer com múltiplas requisições
+/api/classificacoes	Baixa	Podemos calcular no frontend
