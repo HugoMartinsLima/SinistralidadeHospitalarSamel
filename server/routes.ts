@@ -5,7 +5,7 @@ import { executeQuery, executeUpdate, testConnection, initializePool } from "./o
 import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato, FiltroDetalhamentoApolice } from "@shared/schema";
 import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, filtroDetalhamentoApoliceSchema } from "@shared/schema";
 import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamentoApoliceDeduplicado } from "./queries/detalhamento-apolice";
-import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao } from "./queries/novas-apis";
+import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao, getResumoContratos } from "./queries/novas-apis";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -742,6 +742,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Erro no endpoint de teste:', error);
       res.status(500).json({
         error: "Erro no endpoint de teste",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // Resumo de contratos para dashboard
+  app.get("/api/contratos/resumo", async (req, res) => {
+    try {
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const contratos = req.query.contratos as string | undefined;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultados = await getResumoContratos({
+        dataInicio,
+        dataFim,
+        contratos,
+        grupoReceita
+      });
+
+      res.json({
+        data: resultados,
+        total: resultados.length,
+        filters: {
+          dataInicio,
+          dataFim,
+          contratos: contratos || 'TODOS',
+          grupoReceita: grupoReceita || 'TODOS'
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar resumo de contratos:', error);
+      res.status(500).json({
+        error: "Erro ao buscar resumo de contratos",
         message: error instanceof Error ? error.message : "Erro desconhecido"
       });
     }

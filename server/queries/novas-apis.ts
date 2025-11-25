@@ -278,3 +278,102 @@ export async function getDetalhamentoConsolidadoPorClassificacao(
 
   return { data: filtered, contratosIncluidos };
 }
+
+export interface ResumoContratosParams {
+  dataInicio: string;
+  dataFim: string;
+  contratos?: string;
+  grupoReceita?: string;
+}
+
+export interface ResumoContratoItem {
+  nrContrato: number;
+  dsEstipulante: string;
+  sinistroTotal: number;
+  sinistroTitular: number;
+  sinistrosDependentes: number;
+  premio: number | null;
+  sinistralidade: number | null;
+  quantidadeBeneficiarios: number;
+  quantidadeAtendimentos: number;
+}
+
+export async function getResumoContratos(
+  params: ResumoContratosParams
+): Promise<ResumoContratoItem[]> {
+  console.log('='.repeat(80));
+  console.log('📊 RESUMO DE CONTRATOS (usando detalhamento completo)');
+  console.log('='.repeat(80));
+  console.log('Período:', params.dataInicio, 'a', params.dataFim);
+  console.log('Contratos:', params.contratos || 'TODOS');
+  console.log('Grupo Receita:', params.grupoReceita || 'TODOS');
+
+  const safeDataInicio = validateAndSanitizeDate(params.dataInicio);
+  const safeDataFim = validateAndSanitizeDate(params.dataFim);
+
+  let sql = getClonedSQL();
+  sql = sql.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  let contratosFilter = '1=1';
+  if (params.contratos) {
+    const contratosList = params.contratos.split(',').map(c => c.trim()).filter(c => /^\d+$/.test(c));
+    if (contratosList.length > 0) {
+      contratosFilter = `contrato.nr_contrato IN (${contratosList.join(', ')})`;
+    }
+  }
+
+  const blocoOriginal = /and\s*\(\s*1=1\s*\n\s*and\s*\(\s*contrato\.nr_contrato\s+in\s+\(:nrContrato\)\s*\)\s*\n\s*\)/i;
+  sql = sql.replace(blocoOriginal, `AND (${contratosFilter})`);
+  sql = sql.replace(/:nrContrato/g, '0');
+
+  const resumoSql = `
+    WITH detalhamento AS (
+      ${sql}
+    )
+    SELECT 
+      apolice as "nrContrato",
+      MAX(contratante) as "dsEstipulante",
+      COALESCE(SUM(valortotal), 0) as "sinistroTotal",
+      COALESCE(SUM(CASE WHEN UPPER(tipodependente) = 'TITULAR' THEN valortotal ELSE 0 END), 0) as "sinistroTitular",
+      COALESCE(SUM(CASE WHEN UPPER(tipodependente) = 'DEPENDENTE' THEN valortotal ELSE 0 END), 0) as "sinistrosDependentes",
+      COUNT(DISTINCT cod_beneficiario) as "quantidadeBeneficiarios",
+      COUNT(DISTINCT atendimento) as "quantidadeAtendimentos"
+    FROM detalhamento
+    ${params.grupoReceita ? `WHERE UPPER(gruporeceita) = UPPER(:grupoReceita)` : ''}
+    GROUP BY apolice
+    ORDER BY "sinistroTotal" DESC
+  `;
+
+  const binds: Record<string, any> = {
+    DataInicio: safeDataInicio,
+    DataFim: safeDataFim,
+  };
+  
+  if (params.grupoReceita) {
+    binds.grupoReceita = params.grupoReceita;
+  }
+
+  const { sql: expandedSql, binds: expandedBinds } = expandBindPlaceholders(resumoSql, binds);
+  
+  console.log('Executando query de resumo (baseada no detalhamento)...');
+  console.log('Bind variables:', Object.keys(expandedBinds).length);
+
+  const rawResultados = await executeQuery<any>(expandedSql, expandedBinds);
+
+  const resultados: ResumoContratoItem[] = rawResultados.map(row => ({
+    nrContrato: Number(row.nrContrato),
+    dsEstipulante: row.dsEstipulante || '',
+    sinistroTotal: Number(row.sinistroTotal) || 0,
+    sinistroTitular: Number(row.sinistroTitular) || 0,
+    sinistrosDependentes: Number(row.sinistrosDependentes) || 0,
+    premio: null,
+    sinistralidade: null,
+    quantidadeBeneficiarios: Number(row.quantidadeBeneficiarios) || 0,
+    quantidadeAtendimentos: Number(row.quantidadeAtendimentos) || 0,
+  }));
+
+  console.log('Contratos encontrados:', resultados.length);
+  console.log('='.repeat(80));
+
+  return resultados;
+}

@@ -35,6 +35,10 @@ The API is built using Node.js with the Express framework. It connects to an Ora
         1. **Etapa 1**: Query rápida na tabela `pessoa_fisica` para encontrar `cd_pessoa_fisica` por nome (FETCH FIRST 100 ROWS)
         2. **Etapa 2**: Query de detalhamento filtrada pelos IDs encontrados (`WHERE cd_pessoa_fisica IN (...)`)
       - Resposta: `{ data: [...], total: N, paciente: "NOME BUSCADO" }`
+    - **Resumo de Contratos**: `GET /api/contratos/resumo` - Dados agregados por contrato para dashboard
+      - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula), `grupoReceita` (opcional)
+      - Usa SQL de detalhamento completo como base para garantir valores financeiros corretos
+      - Resposta: `{ data: [{ nrContrato, dsEstipulante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos }], total: N }`
     - **Classificações de Contratos**: `GET /api/classificacoes` - Lista classificações com contagem de contratos
       - Resposta: `{ data: [{ dsClassificacao: "PLURAL PME", quantidade: 8 }], total: N }`
     - **Detalhamento Consolidado por Classificação**: `GET /api/classificacao/:dsClassificacao/detalhamento-consolidado`
