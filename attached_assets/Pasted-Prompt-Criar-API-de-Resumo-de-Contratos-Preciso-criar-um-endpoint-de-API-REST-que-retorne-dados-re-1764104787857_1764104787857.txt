@@ -1,0 +1,104 @@
+Prompt: Criar API de Resumo de Contratos
+Preciso criar um endpoint de API REST que retorne dados resumidos de contratos para um dashboard de análise de apólices.
+
+**Endpoint:** `GET /api/contratos/resumo`
+
+**Query Parameters:**
+- `dataInicio` (obrigatório): Data inicial no formato DD/MM/YYYY
+- `dataFim` (obrigatório): Data final no formato DD/MM/YYYY
+- `contratos` (opcional): Lista de números de contrato separados por vírgula (ex: "2444,5998,3021")
+- `grupoReceita` (opcional): Filtrar por grupo de receita específico
+
+**Response:** JSON com array de objetos contendo:
+
+```json
+{
+  "data": [
+    {
+      "nrContrato": 2444,
+      "dsEstipulante": "EMPRESA ABC LTDA",
+      "sinistroTotal": 125000.50,
+      "sinistroTitular": 85000.00,
+      "sinistrosDependentes": 40000.50,
+      "premio": 150000.00,
+      "sinistralidade": 83.33,
+      "quantidadeBeneficiarios": 450,
+      "quantidadeAtendimentos": 1250
+    }
+  ],
+  "total": 1
+}
+Lógica de cálculo (baseada na tabela de detalhamento existente):
+
+sinistroTotal: SUM(valortotal) dos registros no período
+sinistroTitular: SUM(valortotal) WHERE beneficiario = 'TITULAR'
+sinistrosDependentes: SUM(valortotal) WHERE beneficiario = 'DEPENDENTE'
+premio:
+Se existir coluna de prêmio na base, usar ela
+Caso contrário, buscar de tabela de contratos ou retornar null
+sinistralidade: (sinistroTotal / premio) * 100 (ou null se premio não disponível)
+quantidadeBeneficiarios: COUNT(DISTINCT cpf ou identificador do beneficiário)
+quantidadeAtendimentos: COUNT(*) de registros no período
+SQL de referência (adaptar conforme estrutura do banco):
+
+
+SELECT 
+  nr_contrato as nrContrato,
+  ds_estipulante as dsEstipulante,
+  SUM(vl_total) as sinistroTotal,
+  SUM(CASE WHEN ds_beneficiario = 'TITULAR' THEN vl_total ELSE 0 END) as sinistroTitular,
+  SUM(CASE WHEN ds_beneficiario = 'DEPENDENTE' THEN vl_total ELSE 0 END) as sinistrosDependentes,
+  COUNT(DISTINCT cd_beneficiario) as quantidadeBeneficiarios,
+  COUNT(*) as quantidadeAtendimentos
+FROM detalhamento_apolice
+WHERE dt_realizacao BETWEEN :dataInicio AND :dataFim
+  AND (:contratos IS NULL OR nr_contrato IN (:contratos))
+  AND (:grupoReceita IS NULL OR ds_grupo_receita = :grupoReceita)
+GROUP BY nr_contrato, ds_estipulante
+ORDER BY sinistroTotal DESC
+Requisitos:
+
+Retornar dados agregados por contrato
+Performance otimizada para listar até 100 contratos
+Suportar filtro por período obrigatório
+Headers CORS habilitados
+Incluir header ngrok-skip-browser-warning no cliente
+
+---
+
+## Após criar a API
+
+Quando a API estiver pronta, me avise e eu implementarei:
+
+1. **Hook `useContratosResumo`** - Para consumir a nova API
+2. **Atualização da tabela em `Analyses.tsx`** - Exibir dados reais
+3. **Indicadores visuais** - Loading states e formatação
+4. **Cache inteligente** - React Query com staleTime apropriado
+
+
+
+## Plano Completo
+
+### Fase 1: Você cria a API no Replit
+- Usar o prompt acima para criar o endpoint `/api/contratos/resumo`
+- Testar a API com alguns contratos de exemplo
+- Me informar quando estiver funcionando
+
+### Fase 2: Eu implemento no frontend
+1. **Criar hook `useContratosResumo`** em `src/hooks/`
+   - Consumir `/api/contratos/resumo` com parâmetros de data e contratos
+   - Retornar dados tipados
+
+2. **Atualizar `src/pages/Analyses.tsx`**
+   - Substituir dados mockados pelos dados reais da API
+   - Mapear campos: sinistralidade, sinistroTotal, premio, beneficiários
+   - Manter breakeven e distorção como estáticos (ou adicionar à API depois)
+
+3. **Adicionar loading states**
+   - Skeleton loading enquanto busca resumo
+   - Tratamento de erro se API falhar
+
+4. **Formatação dos dados**
+   - Sinistralidade: percentual com 1 casa decimal
+   - Valores monetários: R$ com separador de milhar
+   - Beneficiários: número inteiro
