@@ -31,7 +31,9 @@ The API is built using Node.js with the Express framework. It connects to an Ora
       - **Normalização de chaves**: SQL usa aliases sem aspas duplas, Oracle retorna MAIÚSCULAS. As funções de detalhamento normalizam localmente para lowercase sem afetar outros endpoints.
     - **Busca de Paciente (Pessoa Física)**: `GET /api/pacientes/busca` - Busca registros de um paciente/beneficiário em TODOS os contratos
       - Query params: `nome` (obrigatório, min 3 chars), `dataInicio`, `dataFim`, `grupoReceita` (opcional)
-      - Busca por LIKE '%nome%' nos campos BENEFICIARIO e NOME_PACIENTE_PRESTADOR
+      - **Otimização em 2 etapas** (performance):
+        1. **Etapa 1**: Query rápida na tabela `pessoa_fisica` para encontrar `cd_pessoa_fisica` por nome (FETCH FIRST 100 ROWS)
+        2. **Etapa 2**: Query de detalhamento filtrada pelos IDs encontrados (`WHERE cd_pessoa_fisica IN (...)`)
       - Resposta: `{ data: [...], total: N, paciente: "NOME BUSCADO" }`
     - **Classificações de Contratos**: `GET /api/classificacoes` - Lista classificações com contagem de contratos
       - Resposta: `{ data: [{ dsClassificacao: "PLURAL PME", quantidade: 8 }], total: N }`
