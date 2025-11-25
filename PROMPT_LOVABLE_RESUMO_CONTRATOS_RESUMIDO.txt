@@ -1,0 +1,85 @@
+PROMPT RESUMIDO PARA LOVABLE - API de Resumo de Contratos
+
+Criar tabela/dashboard que exibe dados agregados de sinistralidade por contrato.
+
+---
+
+ENDPOINT:
+GET /api/contratos/resumo?dataInicio=01/11/2025&dataFim=30/11/2025
+
+PARÂMETROS:
+- dataInicio (obrigatório): DD/MM/YYYY
+- dataFim (obrigatório): DD/MM/YYYY  
+- contratos (opcional): "2444,5998,3021"
+- grupoReceita (opcional): "EXAMES"
+
+HEADERS (obrigatório):
+ngrok-skip-browser-warning: true
+
+---
+
+RESPOSTA:
+{
+  "data": [
+    {
+      "nrContrato": 2444,
+      "dsEstipulante": "EMPRESA ABC LTDA",
+      "sinistroTotal": 125000.50,
+      "sinistroTitular": 85000.00,
+      "sinistrosDependentes": 40000.50,
+      "premio": null,
+      "sinistralidade": null,
+      "quantidadeBeneficiarios": 450,
+      "quantidadeAtendimentos": 1250
+    }
+  ],
+  "total": 1
+}
+
+---
+
+INTERFACE TYPESCRIPT:
+interface ResumoContrato {
+  nrContrato: number;
+  dsEstipulante: string;
+  sinistroTotal: number;
+  sinistroTitular: number;
+  sinistrosDependentes: number;
+  premio: number | null;
+  sinistralidade: number | null;
+  quantidadeBeneficiarios: number;
+  quantidadeAtendimentos: number;
+}
+
+---
+
+COLUNAS DA TABELA:
+| Contrato | Estipulante | Sinistro Total | Titular | Dependentes | Beneficiários | Atendimentos |
+
+TOTALIZADORES:
+- Somar sinistroTotal, sinistroTitular, sinistrosDependentes
+- Somar quantidadeBeneficiarios, quantidadeAtendimentos
+
+KPIs SUGERIDOS:
+- Sinistro Total (soma de todos)
+- Total Beneficiários
+- Total Atendimentos
+- Custo Médio por Beneficiário (sinistroTotal / beneficiários)
+
+---
+
+HOOK REACT QUERY:
+const { data, isLoading, error } = useQuery({
+  queryKey: ['contratos-resumo', dataInicio, dataFim, grupoReceita],
+  queryFn: () => fetch(`${API_URL}/api/contratos/resumo?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
+    headers: { 'ngrok-skip-browser-warning': 'true' }
+  }).then(r => r.json()),
+  enabled: !!dataInicio && !!dataFim,
+});
+
+---
+
+FORMATAÇÃO:
+- Valores monetários: R$ com separador de milhar
+- Números: separador de milhar brasileiro
+- Ordenação: por sinistroTotal DESC (já vem ordenado da API)
