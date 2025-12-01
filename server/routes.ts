@@ -6,6 +6,8 @@ import type { Sinistro, Paciente, Estatisticas, FiltroSinistros, Contrato, Filtr
 import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, insertPacienteSchema, updatePacienteSchema, filtroDetalhamentoApoliceSchema } from "@shared/schema";
 import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamentoApoliceDeduplicado } from "./queries/detalhamento-apolice";
 import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao, getResumoContratos } from "./queries/novas-apis";
+import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
+import { sinistralityImportRequestSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -1362,6 +1364,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // ENDPOINTS DE IMPORTAÇÃO - SAMEL
+  // ============================================
+
+  // POST /api/sinistralidade/import - Importar registros para SAMEL.SINISTRALIDADE_IMPORT
+  app.post("/api/sinistralidade/import", async (req, res) => {
+    try {
+      console.log('📥 POST /api/sinistralidade/import');
+      console.log('Body recebido:', JSON.stringify(req.body).substring(0, 500));
+
+      // Validar request body
+      const validatedData = sinistralityImportRequestSchema.safeParse(req.body);
+      
+      if (!validatedData.success) {
+        console.error('❌ Erro de validação:', validatedData.error.errors);
+        return res.status(400).json({
+          error: "Erro de validação",
+          details: validatedData.error.errors,
+        });
+      }
+
+      const { registros } = validatedData.data;
+      console.log(`✅ Validação OK - ${registros.length} registros`);
+
+      // Executar insert
+      const result = await insertSinistralidade(registros);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: `${result.insertedCount} registros inseridos com sucesso`,
+          insertedCount: result.insertedCount,
+          failedCount: result.failedCount,
+        });
+      } else {
+        res.status(207).json({
+          success: false,
+          message: `Inserção parcial: ${result.insertedCount} inseridos, ${result.failedCount} falharam`,
+          insertedCount: result.insertedCount,
+          failedCount: result.failedCount,
+          errors: result.errors.slice(0, 10), // Limitar a 10 erros
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao importar sinistralidade:', error);
+      res.status(500).json({
+        error: "Erro ao importar sinistralidade",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // DELETE /api/sinistralidade/import - Limpar tabela (TRUNCATE)
+  app.delete("/api/sinistralidade/import", async (req, res) => {
+    try {
+      console.log('🗑️  DELETE /api/sinistralidade/import (TRUNCATE)');
+      
+      await truncateSinistralidade();
+      
+      res.json({
+        success: true,
+        message: "Tabela SAMEL.SINISTRALIDADE_IMPORT limpa com sucesso",
+      });
+    } catch (error) {
+      console.error('❌ Erro ao limpar tabela:', error);
+      res.status(500).json({
+        error: "Erro ao limpar tabela",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // GET /api/sinistralidade/import/count - Contar registros na tabela
+  app.get("/api/sinistralidade/import/count", async (req, res) => {
+    try {
+      const count = await countSinistralidade();
+      
+      res.json({
+        count,
+        message: `${count} registros na tabela SAMEL.SINISTRALIDADE_IMPORT`,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao contar registros:', error);
+      res.status(500).json({
+        error: "Erro ao contar registros",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -1388,6 +1480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/pacientes/busca", description: "Buscar paciente por nome em todos os contratos (query: nome, dataInicio, dataFim, grupoReceita)" },
         { method: "GET", path: "/api/classificacoes", description: "Listar classificações de contratos com contagem" },
         { method: "GET", path: "/api/classificacao/:dsClassificacao/detalhamento-consolidado", description: "Detalhamento consolidado por classificação (query: dataInicio, dataFim, grupoReceita)" },
+        { method: "GET", path: "/api/contratos/resumo", description: "Resumo de contratos com agregações (query: dataInicio, dataFim, contratos, grupoReceita)" },
+        { method: "POST", path: "/api/sinistralidade/import", description: "Importar registros para SAMEL.SINISTRALIDADE_IMPORT" },
+        { method: "DELETE", path: "/api/sinistralidade/import", description: "Limpar tabela SAMEL.SINISTRALIDADE_IMPORT (TRUNCATE)" },
+        { method: "GET", path: "/api/sinistralidade/import/count", description: "Contar registros na tabela SAMEL.SINISTRALIDADE_IMPORT" },
       ]
     });
   });

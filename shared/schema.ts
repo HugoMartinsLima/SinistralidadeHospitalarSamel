@@ -111,3 +111,62 @@ export const filtroDetalhamentoApoliceSchema = z.object({
 });
 
 export type FiltroDetalhamentoApolice = z.infer<typeof filtroDetalhamentoApoliceSchema>;
+
+// Schema para importação de sinistralidade (tabela SAMEL.SINISTRALIDADE_IMPORT)
+// Todos os campos são opcionais para permitir flexibilidade na importação
+export const sinistralityImportSchema = z.object({
+  data: z.string().nullable().optional(),
+  hora: z.string().max(8).nullable().optional(),
+  dataAlta: z.string().nullable().optional(),
+  tipoInternacao: z.string().max(50).nullable().optional(),
+  caraterAtendimento: z.string().max(50).nullable().optional(),
+  tipoConta: z.string().max(50).nullable().optional(),
+  atendimento: z.number().nullable().optional(),
+  autorizacaoOriginal: z.number().nullable().optional(),
+  tipoValidacaoClinicaExterna: z.string().max(50).nullable().optional(),
+  dataValidacaoClinicaExterna: z.string().nullable().optional(),
+  dtProcedimento: z.string().nullable().optional(),
+  codTuss: z.number().nullable().optional(),
+  ieOrigemProced: z.number().nullable().optional(),
+  eventoTuss: z.string().max(20).nullable().optional(),
+  nrSeqProcInterno: z.number().nullable().optional(),
+  nmProced: z.string().max(255).nullable().optional(),
+  tipoServico: z.string().max(100).nullable().optional(),
+  grupoReceita: z.string().max(100).nullable().optional(),
+  tipoConsulta: z.string().max(50).nullable().optional(),
+  apolice: z.number().nullable().optional(),
+  contratante: z.string().max(150).nullable().optional(),
+  plano: z.string().max(100).nullable().optional(),
+  codBeneficiario: z.string().max(50).nullable().optional(),
+  nomePacientePrestador: z.string().max(255).nullable().optional(),
+  beneficiario: z.string().max(255).nullable().optional(),
+  sexo: z.string().max(20).nullable().optional(),
+  dataNascimento: z.string().nullable().optional(),
+  faixaEtaria: z.string().max(20).nullable().optional(),
+  matCliente: z.number().nullable().optional(),
+  tipoDependente: z.string().max(50).nullable().optional(),
+  titular: z.string().max(255).nullable().optional(),
+  prestador: z.string().max(255).nullable().optional(),
+  especialidade: z.string().max(100).nullable().optional(),
+  qtde: z.number().nullable().optional(),
+  valor: z.number().nullable().optional(),
+  valorTotal: z.number().nullable().optional(),
+  setorAtendimento: z.string().max(100).nullable().optional(),
+  seContinuidade: z.string().max(20).nullable().optional(),
+  dtContratacao: z.string().nullable().optional(),
+  dtContrato: z.string().nullable().optional(),
+  diasAdesao: z.number().nullable().optional(),
+  cidDoenca: z.string().max(255).nullable().optional(),
+  subEstipulante: z.string().max(150).nullable().optional(),
+  formaChegada: z.string().max(100).nullable().optional(),
+  vlProcedimentoCoparticipacao: z.number().nullable().optional(),
+});
+
+export type SinistralityImport = z.infer<typeof sinistralityImportSchema>;
+
+// Schema para request de importação (array de registros)
+export const sinistralityImportRequestSchema = z.object({
+  registros: z.array(sinistralityImportSchema).min(1, "Deve conter pelo menos 1 registro"),
+});
+
+export type SinistralityImportRequest = z.infer<typeof sinistralityImportRequestSchema>;

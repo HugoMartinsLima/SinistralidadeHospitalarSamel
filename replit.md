@@ -45,6 +45,16 @@ The API is built using Node.js with the Express framework. It connects to an Ora
       - Query params: `dataInicio`, `dataFim`, `grupoReceita` (opcional)
       - Consolida dados de todos os contratos de uma classificação
       - Resposta: `{ data: [...], total: N, classificacao: "...", contratos_incluidos: N, lista_contratos: [...] }`
+    - **Importação de Sinistralidade (SAMEL)**: Endpoints para inserir dados na tabela `SAMEL.SINISTRALIDADE_IMPORT`
+      - `POST /api/sinistralidade/import` - Importa registros (body: `{ registros: [...] }`)
+        - Suporta batch insert com transação
+        - Todos os 45 campos são opcionais
+        - Datas aceitas: DD/MM/YYYY ou YYYY-MM-DD
+        - Resposta: `{ success: true/false, insertedCount: N, failedCount: N }`
+      - `GET /api/sinistralidade/import/count` - Conta registros na tabela
+      - `DELETE /api/sinistralidade/import` - Limpa tabela (TRUNCATE)
+      - **Documentação Lovable**: `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE.md` e `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE_RESUMIDO.txt`
+      - **Configuração Oracle**: Requer GRANT INSERT ON SAMEL.SINISTRALIDADE_IMPORT ao usuário Tasy
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.
