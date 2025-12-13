@@ -170,3 +170,21 @@ export const sinistralityImportRequestSchema = z.object({
 });
 
 export type SinistralityImportRequest = z.infer<typeof sinistralityImportRequestSchema>;
+
+// Schema para breakeven de empresa (tabela sini_empresa_breakeven)
+export const breakevenSchema = z.object({
+  nrContrato: z.string().max(50),
+  dsEstipulante: z.string().max(255).nullable().optional(),
+  breakeven: z.number().min(0).max(999.99),
+});
+
+export type Breakeven = z.infer<typeof breakevenSchema>;
+
+// Schema para inserir/atualizar breakeven
+export const insertBreakevenSchema = z.object({
+  nrContrato: z.string().min(1, "Número do contrato é obrigatório").max(50),
+  dsEstipulante: z.string().max(255).nullable().optional(),
+  breakeven: z.number().min(0, "Breakeven deve ser >= 0").max(999.99, "Breakeven máximo é 999.99"),
+});
+
+export type InsertBreakeven = z.infer<typeof insertBreakevenSchema>;

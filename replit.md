@@ -55,6 +55,13 @@ The API is built using Node.js with the Express framework. It connects to an Ora
       - `DELETE /api/sinistralidade/import` - Limpa tabela (TRUNCATE)
       - **Documentação Lovable**: `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE.md` e `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE_RESUMIDO.txt`
       - **Configuração Oracle**: Requer GRANT INSERT ON SAMEL.SINISTRALIDADE_IMPORT ao usuário Tasy
+    - **Breakeven por Contrato**: Endpoints para gerenciar breakeven na tabela `sini_empresa_breakeven`
+      - `GET /api/breakeven` - Lista todos os breakevens
+      - `GET /api/breakeven/:nrContrato` - Busca breakeven de um contrato
+      - `POST /api/breakeven` - Cria ou atualiza breakeven (UPSERT)
+      - `POST /api/breakeven/batch` - Salva múltiplos em lote
+      - `DELETE /api/breakeven/:nrContrato` - Remove breakeven
+      - **Documentação Lovable**: `PROMPT_LOVABLE_BREAKEVEN.md` e `PROMPT_LOVABLE_BREAKEVEN_RESUMIDO.txt`
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

@@ -7,7 +7,8 @@ import { filtroSinistrosSchema, insertSinistroSchema, updateSinistroSchema, inse
 import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamentoApoliceDeduplicado } from "./queries/detalhamento-apolice";
 import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao, getResumoContratos } from "./queries/novas-apis";
 import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
-import { sinistralityImportRequestSchema } from "@shared/schema";
+import { listarBreakevens, getBreakevenPorContrato, upsertBreakeven, deleteBreakeven, upsertBreakevensBatch } from "./queries/breakeven";
+import { sinistralityImportRequestSchema, insertBreakevenSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Inicializar pool de conexões Oracle
@@ -1454,6 +1455,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // ENDPOINTS DE BREAKEVEN
+  // ============================================
+
+  // GET /api/breakeven - Listar todos os breakevens
+  app.get("/api/breakeven", async (req, res) => {
+    try {
+      const breakevens = await listarBreakevens();
+      res.json({
+        data: breakevens,
+        total: breakevens.length,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao listar breakevens:', error);
+      res.status(500).json({
+        error: "Erro ao listar breakevens",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // GET /api/breakeven/:nrContrato - Buscar breakeven de um contrato
+  app.get("/api/breakeven/:nrContrato", async (req, res) => {
+    try {
+      const { nrContrato } = req.params;
+      
+      const breakeven = await getBreakevenPorContrato(nrContrato);
+      
+      if (!breakeven) {
+        return res.status(404).json({
+          error: "Breakeven não encontrado",
+          message: `Nenhum breakeven cadastrado para o contrato ${nrContrato}`,
+        });
+      }
+      
+      res.json(breakeven);
+    } catch (error) {
+      console.error('❌ Erro ao buscar breakeven:', error);
+      res.status(500).json({
+        error: "Erro ao buscar breakeven",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // POST /api/breakeven - Criar ou atualizar breakeven (upsert)
+  app.post("/api/breakeven", async (req, res) => {
+    try {
+      // Validar body
+      const validatedData = insertBreakevenSchema.safeParse(req.body);
+      
+      if (!validatedData.success) {
+        return res.status(400).json({
+          error: "Erro de validação",
+          details: validatedData.error.errors,
+        });
+      }
+      
+      const result = await upsertBreakeven(validatedData.data);
+      
+      res.status(result.action === 'inserted' ? 201 : 200).json({
+        success: true,
+        action: result.action,
+        message: result.action === 'inserted' 
+          ? `Breakeven criado para contrato ${validatedData.data.nrContrato}`
+          : `Breakeven atualizado para contrato ${validatedData.data.nrContrato}`,
+        data: validatedData.data,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao salvar breakeven:', error);
+      res.status(500).json({
+        error: "Erro ao salvar breakeven",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // POST /api/breakeven/batch - Criar ou atualizar múltiplos breakevens
+  app.post("/api/breakeven/batch", async (req, res) => {
+    try {
+      const { registros } = req.body;
+      
+      if (!Array.isArray(registros) || registros.length === 0) {
+        return res.status(400).json({
+          error: "Erro de validação",
+          message: "Body deve conter um array 'registros' com pelo menos 1 item",
+        });
+      }
+      
+      // Validar cada registro
+      const validatedRecords: Array<{ nrContrato: string; dsEstipulante?: string | null; breakeven: number }> = [];
+      const validationErrors: Array<{ index: number; errors: any }> = [];
+      
+      registros.forEach((registro: any, index: number) => {
+        const result = insertBreakevenSchema.safeParse(registro);
+        if (result.success) {
+          validatedRecords.push(result.data);
+        } else {
+          validationErrors.push({ index, errors: result.error.errors });
+        }
+      });
+      
+      if (validationErrors.length > 0) {
+        return res.status(400).json({
+          error: "Erro de validação em alguns registros",
+          validationErrors: validationErrors.slice(0, 10),
+        });
+      }
+      
+      const result = await upsertBreakevensBatch(validatedRecords);
+      
+      const responseData = {
+        success: result.failed === 0,
+        inserted: result.inserted,
+        updated: result.updated,
+        failed: result.failed,
+        total: registros.length,
+        errors: result.errors.slice(0, 10),
+      };
+      
+      // Retornar status 207 (Multi-Status) quando há falhas parciais
+      if (result.failed > 0) {
+        res.status(207).json(responseData);
+      } else {
+        res.json(responseData);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar breakevens em lote:', error);
+      res.status(500).json({
+        error: "Erro ao salvar breakevens em lote",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
+  // DELETE /api/breakeven/:nrContrato - Remover breakeven de um contrato
+  app.delete("/api/breakeven/:nrContrato", async (req, res) => {
+    try {
+      const { nrContrato } = req.params;
+      
+      const deleted = await deleteBreakeven(nrContrato);
+      
+      if (!deleted) {
+        return res.status(404).json({
+          error: "Breakeven não encontrado",
+          message: `Nenhum breakeven cadastrado para o contrato ${nrContrato}`,
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: `Breakeven removido para o contrato ${nrContrato}`,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao remover breakeven:', error);
+      res.status(500).json({
+        error: "Erro ao remover breakeven",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -1484,6 +1647,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "POST", path: "/api/sinistralidade/import", description: "Importar registros para SAMEL.SINISTRALIDADE_IMPORT" },
         { method: "DELETE", path: "/api/sinistralidade/import", description: "Limpar tabela SAMEL.SINISTRALIDADE_IMPORT (TRUNCATE)" },
         { method: "GET", path: "/api/sinistralidade/import/count", description: "Contar registros na tabela SAMEL.SINISTRALIDADE_IMPORT" },
+        { method: "GET", path: "/api/breakeven", description: "Listar todos os breakevens cadastrados" },
+        { method: "GET", path: "/api/breakeven/:nrContrato", description: "Buscar breakeven de um contrato específico" },
+        { method: "POST", path: "/api/breakeven", description: "Criar ou atualizar breakeven (upsert)" },
+        { method: "POST", path: "/api/breakeven/batch", description: "Criar ou atualizar múltiplos breakevens em lote" },
+        { method: "DELETE", path: "/api/breakeven/:nrContrato", description: "Remover breakeven de um contrato" },
       ]
     });
   });

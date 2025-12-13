@@ -1,0 +1,75 @@
+PROMPT PARA LOVABLE - API DE BREAKEVEN
+
+Preciso integrar minha tela com a API de breakeven. A API já está pronta e disponível.
+
+ENDPOINTS:
+- GET /api/breakeven - Lista todos os breakevens
+- GET /api/breakeven/:nrContrato - Busca breakeven de um contrato
+- POST /api/breakeven - Cria ou atualiza breakeven (UPSERT)
+- POST /api/breakeven/batch - Salva múltiplos em lote
+- DELETE /api/breakeven/:nrContrato - Remove breakeven
+
+ESTRUTURA DO OBJETO:
+{
+  "nrContrato": "12345",      // string, obrigatório
+  "dsEstipulante": "EMPRESA", // string, opcional
+  "breakeven": 75.50          // number, 0-999.99, obrigatório
+}
+
+EXEMPLO SALVAR (POST /api/breakeven):
+Request:
+{
+  "nrContrato": "12345",
+  "dsEstipulante": "EMPRESA EXEMPLO",
+  "breakeven": 75.50
+}
+
+Response (201 ou 200):
+{
+  "success": true,
+  "action": "inserted",  // ou "updated"
+  "message": "Breakeven criado para contrato 12345",
+  "data": { ... }
+}
+
+EXEMPLO LISTAR (GET /api/breakeven):
+Response:
+{
+  "data": [
+    { "nrContrato": "12345", "dsEstipulante": "EMPRESA", "breakeven": 75.50 }
+  ],
+  "total": 1
+}
+
+EXEMPLO REMOVER (DELETE /api/breakeven/12345):
+Response:
+{
+  "success": true,
+  "message": "Breakeven removido para o contrato 12345"
+}
+
+FUNÇÕES TYPESCRIPT:
+```typescript
+const API = 'https://sua-api.com';
+
+async function listarBreakevens() {
+  const res = await fetch(`${API}/api/breakeven`);
+  const data = await res.json();
+  return data.data; // Array de breakevens
+}
+
+async function salvarBreakeven(nrContrato: string, dsEstipulante: string, breakeven: number) {
+  const res = await fetch(`${API}/api/breakeven`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nrContrato, dsEstipulante, breakeven }),
+  });
+  return res.json();
+}
+
+async function removerBreakeven(nrContrato: string) {
+  await fetch(`${API}/api/breakeven/${nrContrato}`, { method: 'DELETE' });
+}
+```
+
+OBSERVAÇÃO: O POST funciona como UPSERT - se o contrato já existe, atualiza. Se não existe, cria.
