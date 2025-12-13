@@ -1,0 +1,69 @@
+Problema Atual
+Ao tentar salvar um breakeven através do endpoint POST /api/breakeven, estou recebendo o seguinte erro:
+
+
+{
+  "error": "Erro ao salvar breakeven",
+  "message": "ORA-00942: table or view does not exist\nHelp: https://docs.oracle.com/error-help/db/ora-00942/"
+}
+Causa
+A tabela breakeven ainda não existe no banco de dados Oracle.
+
+Solução Necessária
+Preciso que você crie a tabela breakeven no banco de dados Oracle com a seguinte estrutura:
+
+
+-- Criar tabela breakeven
+CREATE TABLE breakeven (
+    nr_contrato VARCHAR2(50) PRIMARY KEY,
+    ds_estipulante VARCHAR2(255),
+    breakeven NUMBER(6,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Criar trigger para atualizar updated_at automaticamente
+CREATE OR REPLACE TRIGGER trg_breakeven_updated_at
+BEFORE UPDATE ON breakeven
+FOR EACH ROW
+BEGIN
+    :NEW.updated_at := CURRENT_TIMESTAMP;
+END;
+/
+
+-- Criar índice para buscas
+CREATE INDEX idx_breakeven_contrato ON breakeven(nr_contrato);
+Estrutura dos Dados
+Requisição POST /api/breakeven (body JSON):
+
+
+{
+  "nrContrato": "2444",
+  "dsEstipulante": "NOME DA EMPRESA LTDA",
+  "breakeven": 75.00
+}
+Resposta esperada (sucesso):
+
+
+{
+  "success": true,
+  "action": "inserted",
+  "message": "Breakeven salvo com sucesso",
+  "data": {
+    "nrContrato": "2444",
+    "dsEstipulante": "NOME DA EMPRESA LTDA",
+    "breakeven": 75.00
+  }
+}
+Endpoints da API
+Confirmar que os seguintes endpoints estão funcionando após criar a tabela:
+
+Método	Endpoint	Descrição
+GET	/api/breakeven	Listar todos os breakevens
+GET	/api/breakeven/:nrContrato	Buscar breakeven por contrato
+POST	/api/breakeven	Criar ou atualizar breakeven (upsert)
+DELETE	/api/breakeven/:nrContrato	Remover breakeven
+Observações
+O campo breakeven aceita valores decimais (ex: 75.50, 80.25)
+O nrContrato é a chave primária (único por contrato)
+O POST deve fazer upsert (inserir se não existe, atualizar se existe)
