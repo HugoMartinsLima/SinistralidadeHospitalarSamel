@@ -29,7 +29,7 @@ export async function listarBreakevens(): Promise<Breakeven[]> {
       NR_CONTRATO,
       DS_ESTIPULANTE,
       BREAKEVEN
-    FROM sini_empresa_breakeven
+    FROM SAMEL.sini_empresa_breakeven
     ORDER BY NR_CONTRATO
   `;
   
@@ -46,7 +46,7 @@ export async function getBreakevenPorContrato(nrContrato: string): Promise<Break
       NR_CONTRATO,
       DS_ESTIPULANTE,
       BREAKEVEN
-    FROM sini_empresa_breakeven
+    FROM SAMEL.sini_empresa_breakeven
     WHERE NR_CONTRATO = :nrContrato
   `;
   
@@ -70,7 +70,7 @@ export async function upsertBreakeven(data: InsertBreakeven): Promise<{ action: 
   if (existing) {
     // Atualizar
     const updateSql = `
-      UPDATE sini_empresa_breakeven
+      UPDATE SAMEL.sini_empresa_breakeven
       SET DS_ESTIPULANTE = :dsEstipulante,
           BREAKEVEN = :breakeven
       WHERE NR_CONTRATO = :nrContrato
@@ -86,7 +86,7 @@ export async function upsertBreakeven(data: InsertBreakeven): Promise<{ action: 
   } else {
     // Inserir
     const insertSql = `
-      INSERT INTO sini_empresa_breakeven (NR_CONTRATO, DS_ESTIPULANTE, BREAKEVEN)
+      INSERT INTO SAMEL.sini_empresa_breakeven (NR_CONTRATO, DS_ESTIPULANTE, BREAKEVEN)
       VALUES (:nrContrato, :dsEstipulante, :breakeven)
     `;
     
@@ -105,7 +105,7 @@ export async function upsertBreakeven(data: InsertBreakeven): Promise<{ action: 
  */
 export async function deleteBreakeven(nrContrato: string): Promise<boolean> {
   const sql = `
-    DELETE FROM sini_empresa_breakeven
+    DELETE FROM SAMEL.sini_empresa_breakeven
     WHERE NR_CONTRATO = :nrContrato
   `;
   
