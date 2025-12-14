@@ -1783,6 +1783,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORÁRIO: Endpoint para verificar nomes das colunas da tabela SINISTRALIDADE_IMPORT
+  app.get("/api/sinistralidade/colunas", async (req, res) => {
+    try {
+      const sql = `SELECT column_name, data_type FROM all_tab_columns WHERE table_name = 'SINISTRALIDADE_IMPORT' AND owner = 'SAMEL' ORDER BY column_id`;
+      const { executeQuery } = await import('./oracle-db');
+      const colunas = await executeQuery<{ COLUMN_NAME: string; DATA_TYPE: string }>(sql);
+
+      res.json({
+        data: colunas,
+        total: colunas.length,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao listar colunas:', error);
+      res.status(500).json({
+        error: "Erro ao listar colunas",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
