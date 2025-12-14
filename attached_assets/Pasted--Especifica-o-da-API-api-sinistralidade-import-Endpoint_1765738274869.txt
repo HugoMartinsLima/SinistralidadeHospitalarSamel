@@ -1,0 +1,118 @@
+📋 Especificação da API - /api/sinistralidade/import
+Endpoint
+URL: POST /api/sinistralidade/import
+Content-Type: application/json
+Estrutura do Payload
+
+{
+  "registros": [
+    {
+      // === CAMPOS DE DATA/HORA ===
+      "data": "DD/MM/YYYY",              // DATA - apenas data, sem hora
+      "hora": "HH:MM:SS",                // HORA - apenas hora (ex: "07:24:55")
+      "dataAlta": "DD/MM/YYYY",          // DATAALTA - apenas data
+      "dataValidacaoClinicaExterna": "DD/MM/YYYY" | null,  // pode ser null
+      "dtProcedimento": "DD/MM/YYYY",    // DT_PROCEDIMENTO - apenas data
+      "dataNascimento": "DD/MM/YYYY",    // DATANASCIMENTO - apenas data
+      "dtContratacao": "DD/MM/YYYY",     // DT_CONTRATACAO - apenas data
+      "dtContrato": "DD/MM/YYYY",        // DT_CONTRATO - apenas data
+      
+      // === CAMPOS NUMÉRICOS (INTEGER ou NULL) ===
+      "atendimento": null | number,
+      "autorizacaoOriginal": 753923,
+      "codTuss": 40301680,
+      "ieOrigemProced": null | number,
+      "nrSeqProcInterno": null | number,
+      "apolice": 2444,
+      "matCliente": null | number,
+      "diasAdesao": 468,
+      
+      // === CAMPOS NUMÉRICOS (DECIMAL) ===
+      "qtde": 1,
+      "valor": 28.10,
+      "valorTotal": 28.10,
+      "vlProcedimentoCoparticipacao": 8.43,
+      
+      // === CAMPOS TEXTO (STRING ou NULL) ===
+      "tipoInternacao": "EXAMES",
+      "caraterAtendimento": "ELETIVO",
+      "tipoConta": null | "string",
+      "tipoValidacaoClinicaExterna": "VIA TOKEN",
+      "eventoTuss": "CURVA GLICÊMICA (4 D",  // TRUNCADO para 20 caracteres
+      "nmProced": "CURVA GLICÊMICA (4 DOSAGENS) VIA ORAL OU ENDOVENOSA",
+      "tipoServico": "LABORATÓRIO",
+      "grupoReceita": "ANÁLISES CLÍNICAS",
+      "tipoConsulta": null | "string",
+      "contratante": "2E DESPACHOS ADUANEIROS LTDA",
+      "plano": "COLETIVO EMPRESARIAL MASTER",
+      "codBeneficiario": "244400001400",
+      "nomePacientePrestador": "NOME COMPLETO",
+      "beneficiario": "NOME COMPLETO",
+      "sexo": "F" | "M",
+      "faixaEtaria": "29 - 33",
+      "tipoDependente": "TITULAR" | "DEPENDENTE",
+      "titular": "NOME DO TITULAR",
+      "prestador": "NOME DO PRESTADOR",
+      "especialidade": null | "string",
+      "setorAtendimento": null | "string",
+      "seContinuidade": "NORMAL",
+      "cidDoenca": null | "string",
+      "subEstipulante": "NOME SUB ESTIPULANTE",
+      "formaChegada": null | "string"
+    }
+  ]
+}
+🔧 Requisitos para o Backend Oracle
+1. Campos de DATA (formato DD/MM/YYYY)
+
+O backend deve usar TO_DATE com formato 'DD/MM/YYYY':
+
+
+INSERT INTO sinistralidade_import (
+  data, data_alta, dt_procedimento, data_validacao_clinica_externa,
+  data_nascimento, dt_contratacao, dt_contrato
+) VALUES (
+  TO_DATE(:data, 'DD/MM/YYYY'),
+  TO_DATE(:dataAlta, 'DD/MM/YYYY'),
+  TO_DATE(:dtProcedimento, 'DD/MM/YYYY'),
+  TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY'),
+  TO_DATE(:dataNascimento, 'DD/MM/YYYY'),
+  TO_DATE(:dtContratacao, 'DD/MM/YYYY'),
+  TO_DATE(:dtContrato, 'DD/MM/YYYY')
+);
+2. Campo HORA (formato HH:MM:SS)
+
+O campo hora é apenas hora, sem data. Opções:
+
+Armazenar como VARCHAR2(8): '07:24:55'
+Ou usar INTERVAL DAY TO SECOND se precisar fazer cálculos
+
+hora VARCHAR2(8)  -- Armazena "HH:MM:SS"
+3. Campos que podem ser NULL
+
+Verificar se é null antes do TO_DATE:
+
+
+CASE WHEN :dataValidacaoClinicaExterna IS NOT NULL 
+     THEN TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY') 
+     ELSE NULL 
+END
+📊 Mapeamento Completo de Campos (Excel → API → Oracle)
+Excel (UPPERCASE)	API (camelCase)	Tipo	Formato	Exemplo
+DATA	data	DATE	DD/MM/YYYY	"22/11/2025"
+HORA	hora	VARCHAR2(8)	HH:MM:SS	"07:24:55"
+DATAALTA	dataAlta	DATE	DD/MM/YYYY	"22/11/2025"
+DATA_VALIDACAO_CLINICA_EXTERNA	dataValidacaoClinicaExterna	DATE ou NULL	DD/MM/YYYY	"22/11/2025" ou null
+DT_PROCEDIMENTO	dtProcedimento	DATE	DD/MM/YYYY	"22/11/2025"
+DATANASCIMENTO	dataNascimento	DATE	DD/MM/YYYY	"12/05/1992"
+DT_CONTRATACAO	dtContratacao	DATE	DD/MM/YYYY	"01/09/2024"
+DT_CONTRATO	dtContrato	DATE	DD/MM/YYYY	"01/09/2024"
+APOLICE	apolice	NUMBER	inteiro	2444
+COD_TUSS	codTuss	NUMBER	inteiro	40301680
+VALOR	valor	NUMBER(10,2)	decimal	28.10
+VALORTOTAL	valorTotal	NUMBER(10,2)	decimal	28.10
+QTDE	qtde	NUMBER	inteiro	1
+DIAS_ADESAO	diasAdesao	NUMBER	inteiro	468
+VL_PROCEDIMENTO_COPARTICIPACAO	vlProcedimentoCoparticipacao	NUMBER(10,2)	decimal	8.43
+EVENTO_TUSS	eventoTuss	VARCHAR2(20)	texto truncado	"CURVA GLICÊMICA (4 D"
+(demais campos texto)	(camelCase)	VARCHAR2	texto	(string ou null)

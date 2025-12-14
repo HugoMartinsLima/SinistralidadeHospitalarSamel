@@ -7,38 +7,32 @@ function normalizeDate(dateStr: string | null | undefined): string | null {
   
   const str = dateStr.trim();
   
-  // Formato DD/MM/YYYY HH:MM:SS ou DD/MM/YYYY HH:MM ou DD/MM/YYYY
-  // Ex: "01/11/2025 09:26:00", "01/11/2025 09:26", "01/11/2025"
-  const matchDMY4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  // Formato DD/MM/YYYY - retorna como está
+  const matchDMY4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (matchDMY4) {
-    const [, day, month, year, hour, min, sec] = matchDMY4;
-    const h = hour || '00';
-    const m = min || '00';
-    const s = sec || '00';
-    return `${day}/${month}/${year} ${h}:${m}:${s}`;
+    return str;
   }
   
-  // Formato DD/MM/YY HH:MM:SS ou DD/MM/YY HH:MM ou DD/MM/YY
-  // Ex: "22/11/25 09:26:00", "22/11/25 09:26", "22/11/25"
-  const matchDMY2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  // Formato DD/MM/YYYY com hora (ignorar hora) 
+  const matchDMY4WithTime = str.match(/^(\d{2})\/(\d{2})\/(\d{4})\s/);
+  if (matchDMY4WithTime) {
+    const [, day, month, year] = matchDMY4WithTime;
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Formato DD/MM/YY - converter para YYYY
+  const matchDMY2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
   if (matchDMY2) {
-    const [, day, month, year2, hour, min, sec] = matchDMY2;
+    const [, day, month, year2] = matchDMY2;
     const year4 = parseInt(year2, 10) >= 50 ? 1900 + parseInt(year2, 10) : 2000 + parseInt(year2, 10);
-    const h = hour || '00';
-    const m = min || '00';
-    const s = sec || '00';
-    return `${day}/${month}/${year4} ${h}:${m}:${s}`;
+    return `${day}/${month}/${year4}`;
   }
   
-  // Formato ISO: YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DD
-  // Ex: "2025-11-01T09:26:00.000Z", "2025-11-01"
-  const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
+  // Formato ISO: YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS
+  const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (matchISO) {
-    const [, year, month, day, hour, min, sec] = matchISO;
-    const h = hour || '00';
-    const m = min || '00';
-    const s = sec || '00';
-    return `${day}/${month}/${year} ${h}:${m}:${s}`;
+    const [, year, month, day] = matchISO;
+    return `${day}/${month}/${year}`;
   }
   
   console.warn(`⚠️ Formato de data não reconhecido: "${dateStr}"`);
@@ -108,16 +102,51 @@ INSERT INTO SAMEL.SINISTRALIDADE_IMPORT (
   DT_CONTRATACAO, DT_CONTRATO, DIAS_ADESAO, CID_DOENCA, SUB_ESTIPULANTE,
   FORMA_CHEGADA, VL_PROCEDIMENTO_COPARTICIPACAO
 ) VALUES (
-  TO_DATE(:data, 'DD/MM/YYYY HH24:MI:SS'), :hora, TO_DATE(:dataAlta, 'DD/MM/YYYY HH24:MI:SS'), :tipoInternacao, :caraterAtendimento,
-  :tipoConta, :atendimento, :autorizacaoOriginal, :tipoValidacaoClinicaExterna,
-  TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY HH24:MI:SS'), TO_DATE(:dtProcedimento, 'DD/MM/YYYY HH24:MI:SS'), :codTuss, :ieOrigemProced,
-  :eventoTuss, :nrSeqProcInterno, :nmProced, :tipoServico, :grupoReceita,
-  :tipoConsulta, :apolice, :contratante, :plano, :codBeneficiario,
-  :nomePacientePrestador, :beneficiario, :sexo, TO_DATE(:dataNascimento, 'DD/MM/YYYY'), :faixaEtaria,
-  :matCliente, :tipoDependente, :titular, :prestador, :especialidade,
-  :qtde, :valor, :valorTotal, :setorAtendimento, :seContinuidade,
-  TO_DATE(:dtContratacao, 'DD/MM/YYYY'), TO_DATE(:dtContrato, 'DD/MM/YYYY'), :diasAdesao, :cidDoenca, :subEstipulante,
-  :formaChegada, :vlProcedimentoCoparticipacao
+  TO_DATE(:data, 'DD/MM/YYYY'),
+  :hora,
+  TO_DATE(:dataAlta, 'DD/MM/YYYY'),
+  :tipoInternacao,
+  :caraterAtendimento,
+  :tipoConta,
+  :atendimento,
+  :autorizacaoOriginal,
+  :tipoValidacaoClinicaExterna,
+  TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY'),
+  TO_DATE(:dtProcedimento, 'DD/MM/YYYY'),
+  :codTuss,
+  :ieOrigemProced,
+  :eventoTuss,
+  :nrSeqProcInterno,
+  :nmProced,
+  :tipoServico,
+  :grupoReceita,
+  :tipoConsulta,
+  :apolice,
+  :contratante,
+  :plano,
+  :codBeneficiario,
+  :nomePacientePrestador,
+  :beneficiario,
+  :sexo,
+  TO_DATE(:dataNascimento, 'DD/MM/YYYY'),
+  :faixaEtaria,
+  :matCliente,
+  :tipoDependente,
+  :titular,
+  :prestador,
+  :especialidade,
+  :qtde,
+  :valor,
+  :valorTotal,
+  :setorAtendimento,
+  :seContinuidade,
+  TO_DATE(:dtContratacao, 'DD/MM/YYYY'),
+  TO_DATE(:dtContrato, 'DD/MM/YYYY'),
+  :diasAdesao,
+  :cidDoenca,
+  :subEstipulante,
+  :formaChegada,
+  :vlProcedimentoCoparticipacao
 )`;
 
 export interface InsertResult {
@@ -149,6 +178,19 @@ export async function insertSinistralidade(
     for (let i = 0; i < registros.length; i++) {
       try {
         const binds = mapRecordToBinds(registros[i]);
+        
+        // Log primeiro registro para debug
+        if (i === 0) {
+          console.log('📋 Primeiro registro (binds):');
+          console.log('  data:', binds.data);
+          console.log('  hora:', binds.hora);
+          console.log('  dataAlta:', binds.dataAlta);
+          console.log('  dtProcedimento:', binds.dtProcedimento);
+          console.log('  dataNascimento:', binds.dataNascimento);
+          console.log('  apolice:', binds.apolice);
+          console.log('  grupoReceita:', binds.grupoReceita);
+        }
+        
         await connection.execute(INSERT_SQL, binds, { autoCommit: false });
         result.insertedCount++;
         
@@ -162,6 +204,12 @@ export async function insertSinistralidade(
           error: err.message || String(err),
         });
         console.error(`❌ Erro no registro ${i}:`, err.message);
+        
+        // Log dados do registro com erro
+        if (result.failedCount <= 3) {
+          const binds = mapRecordToBinds(registros[i]);
+          console.error('  Dados do registro:', JSON.stringify(binds, null, 2));
+        }
       }
     }
 
