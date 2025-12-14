@@ -7,27 +7,38 @@ function normalizeDate(dateStr: string | null | undefined): string | null {
   
   const str = dateStr.trim();
   
-  // Formato DD/MM/YYYY (com ou sem hora)
-  // Ex: "01/11/2025" ou "01/11/2025 00:00:00"
-  const matchDMY4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  // Formato DD/MM/YYYY HH:MM:SS ou DD/MM/YYYY HH:MM ou DD/MM/YYYY
+  // Ex: "01/11/2025 09:26:00", "01/11/2025 09:26", "01/11/2025"
+  const matchDMY4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (matchDMY4) {
-    return `${matchDMY4[1]}/${matchDMY4[2]}/${matchDMY4[3]}`;
+    const [, day, month, year, hour, min, sec] = matchDMY4;
+    const h = hour || '00';
+    const m = min || '00';
+    const s = sec || '00';
+    return `${day}/${month}/${year} ${h}:${m}:${s}`;
   }
   
-  // Formato DD/MM/YY (ano com 2 dígitos, com ou sem hora)
-  // Ex: "22/11/25" ou "22/11/25 00:00:00"
-  const matchDMY2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})/);
+  // Formato DD/MM/YY HH:MM:SS ou DD/MM/YY HH:MM ou DD/MM/YY
+  // Ex: "22/11/25 09:26:00", "22/11/25 09:26", "22/11/25"
+  const matchDMY2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (matchDMY2) {
-    const year2 = parseInt(matchDMY2[3], 10);
-    const year4 = year2 >= 50 ? 1900 + year2 : 2000 + year2;
-    return `${matchDMY2[1]}/${matchDMY2[2]}/${year4}`;
+    const [, day, month, year2, hour, min, sec] = matchDMY2;
+    const year4 = parseInt(year2, 10) >= 50 ? 1900 + parseInt(year2, 10) : 2000 + parseInt(year2, 10);
+    const h = hour || '00';
+    const m = min || '00';
+    const s = sec || '00';
+    return `${day}/${month}/${year4} ${h}:${m}:${s}`;
   }
   
-  // Formato ISO: YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS
-  // Ex: "2025-11-01" ou "2025-11-01T00:00:00.000Z"
-  const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  // Formato ISO: YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DD
+  // Ex: "2025-11-01T09:26:00.000Z", "2025-11-01"
+  const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
   if (matchISO) {
-    return `${matchISO[3]}/${matchISO[2]}/${matchISO[1]}`;
+    const [, year, month, day, hour, min, sec] = matchISO;
+    const h = hour || '00';
+    const m = min || '00';
+    const s = sec || '00';
+    return `${day}/${month}/${year} ${h}:${m}:${s}`;
   }
   
   console.warn(`⚠️ Formato de data não reconhecido: "${dateStr}"`);
@@ -97,9 +108,9 @@ INSERT INTO SAMEL.SINISTRALIDADE_IMPORT (
   DT_CONTRATACAO, DT_CONTRATO, DIAS_ADESAO, CID_DOENCA, SUB_ESTIPULANTE,
   FORMA_CHEGADA, VL_PROCEDIMENTO_COPARTICIPACAO
 ) VALUES (
-  TO_DATE(:data, 'DD/MM/YYYY'), :hora, TO_DATE(:dataAlta, 'DD/MM/YYYY'), :tipoInternacao, :caraterAtendimento,
+  TO_DATE(:data, 'DD/MM/YYYY HH24:MI:SS'), :hora, TO_DATE(:dataAlta, 'DD/MM/YYYY HH24:MI:SS'), :tipoInternacao, :caraterAtendimento,
   :tipoConta, :atendimento, :autorizacaoOriginal, :tipoValidacaoClinicaExterna,
-  TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY'), TO_DATE(:dtProcedimento, 'DD/MM/YYYY'), :codTuss, :ieOrigemProced,
+  TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY HH24:MI:SS'), TO_DATE(:dtProcedimento, 'DD/MM/YYYY HH24:MI:SS'), :codTuss, :ieOrigemProced,
   :eventoTuss, :nrSeqProcInterno, :nmProced, :tipoServico, :grupoReceita,
   :tipoConsulta, :apolice, :contratante, :plano, :codBeneficiario,
   :nomePacientePrestador, :beneficiario, :sexo, TO_DATE(:dataNascimento, 'DD/MM/YYYY'), :faixaEtaria,
