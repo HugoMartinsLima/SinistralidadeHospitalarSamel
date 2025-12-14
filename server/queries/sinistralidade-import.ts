@@ -1,7 +1,7 @@
 /**
  * Queries para tabela SAMEL.SINISTRALIDADE_IMPORT
  * APIs de análise dos dados importados
- * COLUNAS: UPPERCASE sem aspas (padrão Oracle)
+ * COLUNAS: Nomes exatos conforme tabela Oracle
  * FILTRO DE DATA: Usa DT_PROCEDIMENTO para filtrar por período
  */
 
@@ -97,7 +97,8 @@ interface FiltroBuscaPaciente {
   grupoReceita?: string;
 }
 
-// Função para normalizar chaves do Oracle (UPPERCASE) para camelCase
+// Função para normalizar chaves do Oracle para camelCase
+// Nomes das colunas conforme tabela real
 function normalizeKeys<T>(row: Record<string, any>): T {
   const keyMap: Record<string, string> = {
     'APOLICE': 'apolice',
@@ -110,7 +111,7 @@ function normalizeKeys<T>(row: Record<string, any>): T {
     'BREAKEVEN': 'breakeven',
     'DATA': 'data',
     'HORA': 'hora',
-    'DATA_ALTA': 'dataAlta',
+    'DATAALTA': 'dataAlta',
     'TIPO_INTERNACAO': 'tipoInternacao',
     'CARATER_ATENDIMENTO': 'caraterAtendimento',
     'TIPO_CONTA': 'tipoConta',
@@ -124,24 +125,24 @@ function normalizeKeys<T>(row: Record<string, any>): T {
     'EVENTO_TUSS': 'eventoTuss',
     'NR_SEQ_PROC_INTERNO': 'nrSeqProcInterno',
     'NM_PROCED': 'nmProced',
-    'TIPO_SERVICO': 'tipoServico',
-    'GRUPO_RECEITA': 'grupoReceita',
-    'TIPO_CONSULTA': 'tipoConsulta',
+    'TIPOSERVICO': 'tipoServico',
+    'GRUPORECEITA': 'grupoReceita',
+    'TIPOCONSULTA': 'tipoConsulta',
     'PLANO': 'plano',
     'COD_BENEFICIARIO': 'codBeneficiario',
     'NOME_PACIENTE_PRESTADOR': 'nomePacientePrestador',
     'BENEFICIARIO': 'beneficiario',
     'SEXO': 'sexo',
-    'DATA_NASCIMENTO': 'dataNascimento',
+    'DATANASCIMENTO': 'dataNascimento',
     'FAIXA_ETARIA': 'faixaEtaria',
     'MAT_CLIENTE': 'matCliente',
-    'TIPO_DEPENDENTE': 'tipoDependente',
+    'TIPODEPENDENTE': 'tipoDependente',
     'TITULAR': 'titular',
     'PRESTADOR': 'prestador',
     'ESPECIALIDADE': 'especialidade',
     'QTDE': 'qtde',
     'VALOR': 'valor',
-    'VALOR_TOTAL': 'valorTotal',
+    'VALORTOTAL': 'valorTotal',
     'SETOR_ATENDIMENTO': 'setorAtendimento',
     'SE_CONTINUIDADE': 'seContinuidade',
     'DT_CONTRATACAO': 'dtContratacao',
@@ -174,9 +175,9 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
     SELECT 
       si.APOLICE,
       MAX(si.CONTRATANTE) AS CONTRATANTE,
-      NVL(SUM(si.VALOR_TOTAL), 0) AS SINISTRO_TOTAL,
-      NVL(SUM(CASE WHEN UPPER(si.TIPO_DEPENDENTE) = 'TITULAR' OR si.TIPO_DEPENDENTE IS NULL THEN si.VALOR_TOTAL ELSE 0 END), 0) AS SINISTRO_TITULAR,
-      NVL(SUM(CASE WHEN UPPER(si.TIPO_DEPENDENTE) != 'TITULAR' AND si.TIPO_DEPENDENTE IS NOT NULL THEN si.VALOR_TOTAL ELSE 0 END), 0) AS SINISTROS_DEPENDENTES,
+      NVL(SUM(si.VALORTOTAL), 0) AS SINISTRO_TOTAL,
+      NVL(SUM(CASE WHEN UPPER(si.TIPODEPENDENTE) = 'TITULAR' OR si.TIPODEPENDENTE IS NULL THEN si.VALORTOTAL ELSE 0 END), 0) AS SINISTRO_TITULAR,
+      NVL(SUM(CASE WHEN UPPER(si.TIPODEPENDENTE) != 'TITULAR' AND si.TIPODEPENDENTE IS NOT NULL THEN si.VALORTOTAL ELSE 0 END), 0) AS SINISTROS_DEPENDENTES,
       COUNT(DISTINCT si.COD_BENEFICIARIO) AS QUANTIDADE_BENEFICIARIOS,
       COUNT(*) AS QUANTIDADE_ATENDIMENTOS,
       NVL(b.BREAKEVEN, 75) AS BREAKEVEN
@@ -187,9 +188,9 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
   
   const binds: Record<string, any> = {};
   
-  // Filtro de data usando DT_PROCEDIMENTO (formato DD/MM/RR para anos de 2 dígitos)
-  sql += ` AND TO_DATE(si.DT_PROCEDIMENTO, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')`;
-  sql += ` AND TO_DATE(si.DT_PROCEDIMENTO, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')`;
+  // Filtro de data usando DT_PROCEDIMENTO
+  sql += ` AND si.DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')`;
+  sql += ` AND si.DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')`;
   binds.dataInicio = dataInicio;
   binds.dataFim = dataFim;
   
@@ -207,7 +208,7 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
   
   // Filtro de grupo de receita
   if (grupoReceita) {
-    sql += ` AND si.GRUPO_RECEITA = :grupoReceita`;
+    sql += ` AND si.GRUPORECEITA = :grupoReceita`;
     binds.grupoReceita = grupoReceita;
   }
   
@@ -227,20 +228,20 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
 export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promise<{ data: DetalhamentoImport[]; total: number }> {
   const { nrContrato, dataInicio, dataFim, grupoReceita, limit, offset } = filtros;
   
-  // Query para contar total - usa DT_PROCEDIMENTO
+  // Query para contar total
   let countSql = `
     SELECT COUNT(*) AS TOTAL
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   let sql = `
     SELECT 
       DATA,
       HORA,
-      DATA_ALTA,
+      DATAALTA,
       TIPO_INTERNACAO,
       CARATER_ATENDIMENTO,
       TIPO_CONTA,
@@ -254,9 +255,9 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       EVENTO_TUSS,
       NR_SEQ_PROC_INTERNO,
       NM_PROCED,
-      TIPO_SERVICO,
-      GRUPO_RECEITA,
-      TIPO_CONSULTA,
+      TIPOSERVICO,
+      GRUPORECEITA,
+      TIPOCONSULTA,
       APOLICE,
       CONTRATANTE,
       PLANO,
@@ -264,16 +265,16 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       NOME_PACIENTE_PRESTADOR,
       BENEFICIARIO,
       SEXO,
-      DATA_NASCIMENTO,
+      DATANASCIMENTO,
       FAIXA_ETARIA,
       MAT_CLIENTE,
-      TIPO_DEPENDENTE,
+      TIPODEPENDENTE,
       TITULAR,
       PRESTADOR,
       ESPECIALIDADE,
       QTDE,
       VALOR,
-      VALOR_TOTAL,
+      VALORTOTAL,
       SETOR_ATENDIMENTO,
       SE_CONTINUIDADE,
       DT_CONTRATACAO,
@@ -285,8 +286,8 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   const binds: Record<string, any> = {
@@ -297,7 +298,7 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
   
   // Filtro de grupo de receita
   if (grupoReceita) {
-    const grupoFilter = ` AND GRUPO_RECEITA = :grupoReceita`;
+    const grupoFilter = ` AND GRUPORECEITA = :grupoReceita`;
     sql += grupoFilter;
     countSql += grupoFilter;
     binds.grupoReceita = grupoReceita;
@@ -337,7 +338,7 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
     SELECT 
       DATA,
       HORA,
-      DATA_ALTA,
+      DATAALTA,
       TIPO_INTERNACAO,
       CARATER_ATENDIMENTO,
       TIPO_CONTA,
@@ -351,9 +352,9 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       EVENTO_TUSS,
       NR_SEQ_PROC_INTERNO,
       NM_PROCED,
-      TIPO_SERVICO,
-      GRUPO_RECEITA,
-      TIPO_CONSULTA,
+      TIPOSERVICO,
+      GRUPORECEITA,
+      TIPOCONSULTA,
       APOLICE,
       CONTRATANTE,
       PLANO,
@@ -361,16 +362,16 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       NOME_PACIENTE_PRESTADOR,
       BENEFICIARIO,
       SEXO,
-      DATA_NASCIMENTO,
+      DATANASCIMENTO,
       FAIXA_ETARIA,
       MAT_CLIENTE,
-      TIPO_DEPENDENTE,
+      TIPODEPENDENTE,
       TITULAR,
       PRESTADOR,
       ESPECIALIDADE,
       QTDE,
       VALOR,
-      VALOR_TOTAL,
+      VALORTOTAL,
       SETOR_ATENDIMENTO,
       SE_CONTINUIDADE,
       DT_CONTRATACAO,
@@ -382,8 +383,8 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE (UPPER(BENEFICIARIO) LIKE UPPER(:nomeBusca) OR UPPER(NOME_PACIENTE_PRESTADOR) LIKE UPPER(:nomeBusca))
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE(DT_PROCEDIMENTO, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   const binds: Record<string, any> = {
@@ -394,7 +395,7 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
   
   // Filtro de grupo de receita
   if (grupoReceita) {
-    sql += ` AND GRUPO_RECEITA = :grupoReceita`;
+    sql += ` AND GRUPORECEITA = :grupoReceita`;
     binds.grupoReceita = grupoReceita;
   }
   
@@ -411,12 +412,12 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
  */
 export async function getGruposReceitaImport(): Promise<GrupoReceita[]> {
   const sql = `
-    SELECT DISTINCT GRUPO_RECEITA
+    SELECT DISTINCT GRUPORECEITA
     FROM SAMEL.SINISTRALIDADE_IMPORT
-    WHERE GRUPO_RECEITA IS NOT NULL
-    ORDER BY GRUPO_RECEITA
+    WHERE GRUPORECEITA IS NOT NULL
+    ORDER BY GRUPORECEITA
   `;
   
-  const rows = await executeQuery<{ GRUPO_RECEITA: string }>(sql);
-  return rows.map(row => ({ grupoReceita: row.GRUPO_RECEITA }));
+  const rows = await executeQuery<{ GRUPORECEITA: string }>(sql);
+  return rows.map(row => ({ grupoReceita: row.GRUPORECEITA }));
 }
