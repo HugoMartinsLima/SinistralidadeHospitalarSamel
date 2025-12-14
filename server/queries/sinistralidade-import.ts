@@ -184,9 +184,9 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
   
   const binds: Record<string, any> = {};
   
-  // Filtro de data (DATA no formato DD/MM/YYYY)
-  sql += ` AND TO_DATE(si.DATA, 'DD/MM/YYYY') >= TO_DATE(:dataInicio, 'DD/MM/YYYY')`;
-  sql += ` AND TO_DATE(si.DATA, 'DD/MM/YYYY') <= TO_DATE(:dataFim, 'DD/MM/YYYY')`;
+  // Filtro de data (DATA no formato DD/MM/RR para suportar anos de 2 dígitos)
+  sql += ` AND TO_DATE(si.DATA, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')`;
+  sql += ` AND TO_DATE(si.DATA, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')`;
   binds.dataInicio = dataInicio;
   binds.dataFim = dataFim;
   
@@ -229,8 +229,8 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
     SELECT COUNT(*) AS TOTAL
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND TO_DATE(DATA, 'DD/MM/YYYY') >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND TO_DATE(DATA, 'DD/MM/YYYY') <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TO_DATE(DATA, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE(DATA, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   let sql = `
@@ -282,8 +282,8 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND TO_DATE(DATA, 'DD/MM/YYYY') >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND TO_DATE(DATA, 'DD/MM/YYYY') <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TO_DATE(DATA, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE(DATA, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   const binds: Record<string, any> = {
@@ -378,8 +378,8 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE (UPPER(BENEFICIARIO) LIKE UPPER(:nomeBusca) OR UPPER(NOME_PACIENTE_PRESTADOR) LIKE UPPER(:nomeBusca))
-      AND TO_DATE(DATA, 'DD/MM/YYYY') >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND TO_DATE(DATA, 'DD/MM/YYYY') <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TO_DATE(DATA, 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE(DATA, 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   const binds: Record<string, any> = {
