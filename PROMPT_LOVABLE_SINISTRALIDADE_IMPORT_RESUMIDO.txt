@@ -1,46 +1,102 @@
-INTEGRAÇÃO API SINISTRALIDADE IMPORT - ANÁLISE DE DADOS
+APIS DE SINISTRALIDADE IMPORTADA - CORREÇÃO FINAL
 
-Use estas 4 APIs para análise dos dados importados de sinistralidade:
+As APIs foram corrigidas para:
+1. Usar colunas em camelCase com aspas duplas (padrão Oracle)
+2. Filtrar por "dtProcedimento" (data do procedimento) ao invés de "data"
 
-=== 1. RESUMO POR CONTRATO ===
-GET /api/sinistralidade/contratos/resumo?dataInicio=01/01/2024&dataFim=31/12/2024&contratos=123,456&grupoReceita=CONSULTAS
+=== ENDPOINT: GET /api/sinistralidade/contratos/resumo ===
 
-Resposta: { data: [{ apolice, contratante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos, breakeven }], total }
+Query params:
+- dataInicio (obrigatório): DD/MM/YYYY ou DD/MM/YY (ex: 01/11/2025 ou 01/11/25)
+- dataFim (obrigatório): DD/MM/YYYY ou DD/MM/YY
+- contratos (opcional): lista separada por vírgula (ex: 2444,2445)
+- grupoReceita (opcional): filtro por grupo
 
-- Agrupa por apólice com totais financeiros
-- Breakeven vem da tabela sini_empresa_breakeven (default 75%)
+Exemplo:
+GET /api/sinistralidade/contratos/resumo?dataInicio=01/11/2025&dataFim=30/11/2025&contratos=2444
 
-=== 2. DETALHAMENTO COMPLETO ===
-GET /api/sinistralidade/detalhamento?nrContrato=12345&dataInicio=01/01/2024&dataFim=31/12/2024&grupoReceita=CONSULTAS&limit=50&offset=0
+Resposta:
+{
+  "data": [{
+    "apolice": 2444,
+    "contratante": "2E DESPACHOS ADUANEIROS LTDA",
+    "sinistroTotal": 15000.50,
+    "sinistroTitular": 10000.00,
+    "sinistrosDependentes": 5000.50,
+    "quantidadeBeneficiarios": 25,
+    "quantidadeAtendimentos": 150,
+    "breakeven": 75
+  }],
+  "total": 1
+}
 
-Resposta: { data: [45 campos por registro], total, pagination, filters }
+=== ENDPOINT: GET /api/sinistralidade/detalhamento ===
 
-- Retorna TODOS os 45 campos da tabela
-- Paginação opcional (sem limit = retorna TODOS)
+Query params:
+- nrContrato (obrigatório): número da apólice
+- dataInicio (obrigatório): DD/MM/YYYY ou DD/MM/YY
+- dataFim (obrigatório): DD/MM/YYYY ou DD/MM/YY
+- grupoReceita (opcional): filtro por grupo
+- limit (opcional): paginação
+- offset (opcional): paginação
 
-=== 3. BUSCA PACIENTE ===
-GET /api/sinistralidade/pacientes/busca?nome=SILVA&dataInicio=01/01/2024&dataFim=31/12/2024&grupoReceita=CONSULTAS
+Exemplo:
+GET /api/sinistralidade/detalhamento?nrContrato=2444&dataInicio=01/11/2025&dataFim=30/11/2025
 
-Resposta: { data: [45 campos], total, paciente: "SILVA", filters }
+Resposta:
+{
+  "data": [{
+    "data": "15/11/2025",
+    "hora": "14:30",
+    "dtProcedimento": "15/11/2025",
+    "apolice": 2444,
+    "contratante": "2E DESPACHOS ADUANEIROS LTDA",
+    "beneficiario": "JOAO SILVA",
+    "valorTotal": 150.00,
+    "grupoReceita": "CONSULTAS",
+    ... (45 campos no total)
+  }],
+  "total": 150
+}
 
-- Busca case insensitive em beneficiario e nomePacientePrestador
-- Limitado a 500 registros
+=== ENDPOINT: GET /api/sinistralidade/grupos-receita ===
 
-=== 4. GRUPOS DE RECEITA ===
+Sem parâmetros.
+
+Exemplo:
 GET /api/sinistralidade/grupos-receita
 
-Resposta: { data: [{ grupoReceita: "CONSULTAS" }, ...], total }
+Resposta:
+{
+  "data": [
+    { "grupoReceita": "CONSULTAS" },
+    { "grupoReceita": "EXAMES" },
+    { "grupoReceita": "INTERNACAO" }
+  ],
+  "total": 3
+}
 
-- Sem parâmetros
-- Ordenado alfabeticamente
+=== ENDPOINT: GET /api/sinistralidade/pacientes/busca ===
 
-=== HOOKS REACT ===
+Query params:
+- nome (obrigatório, min 3 chars): nome do paciente
+- dataInicio (obrigatório): DD/MM/YYYY ou DD/MM/YY
+- dataFim (obrigatório): DD/MM/YYYY ou DD/MM/YY
+- grupoReceita (opcional): filtro por grupo
 
-const { data, isLoading } = useQuery({
-  queryKey: ['/api/sinistralidade/contratos/resumo', dataInicio, dataFim],
-  queryFn: () => fetch(`/api/sinistralidade/contratos/resumo?dataInicio=${dataInicio}&dataFim=${dataFim}`).then(r => r.json()),
-  enabled: !!dataInicio && !!dataFim,
-});
+Exemplo:
+GET /api/sinistralidade/pacientes/busca?nome=JOAO&dataInicio=01/11/2025&dataFim=30/11/2025
 
-=== FORMATO DATAS ===
-DD/MM/YYYY (exemplo: 01/01/2024)
+Resposta:
+{
+  "data": [...],
+  "total": 25,
+  "paciente": "JOAO"
+}
+
+=== IMPORTANTE ===
+
+- Todas as colunas usam camelCase (beneficiario, valorTotal, dtProcedimento, etc)
+- O filtro de período usa a coluna "dtProcedimento" (data do procedimento)
+- Datas podem ser enviadas como DD/MM/YYYY ou DD/MM/YY
+- A API não usa path parameters, apenas query parameters
