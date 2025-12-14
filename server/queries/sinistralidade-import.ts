@@ -2,6 +2,7 @@
  * Queries para tabela SAMEL.SINISTRALIDADE_IMPORT
  * APIs de análise dos dados importados
  * IMPORTANTE: Colunas criadas em camelCase requerem aspas duplas no Oracle
+ * FILTRO DE DATA: Usa "dtProcedimento" para filtrar por período
  */
 
 import { executeQuery } from '../oracle-db';
@@ -165,6 +166,7 @@ function normalizeKeys<T>(row: Record<string, any>): T {
  * GET /api/sinistralidade/contratos/resumo
  * Dados agregados por contrato (apólice) para dashboard
  * Inclui busca de breakeven na tabela SAMEL.sini_empresa_breakeven
+ * FILTRO: Usa dtProcedimento para filtrar por período
  */
 export async function getResumoContratosImport(filtros: FiltroResumoContratos): Promise<ResumoContratoImport[]> {
   const { dataInicio, dataFim, contratos, grupoReceita } = filtros;
@@ -186,9 +188,9 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
   
   const binds: Record<string, any> = {};
   
-  // Filtro de data (data no formato DD/MM/RR para suportar anos de 2 dígitos)
-  sql += ` AND TO_DATE(si."data", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')`;
-  sql += ` AND TO_DATE(si."data", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')`;
+  // Filtro de data usando dtProcedimento (formato DD/MM/RR para anos de 2 dígitos)
+  sql += ` AND TO_DATE(si."dtProcedimento", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')`;
+  sql += ` AND TO_DATE(si."dtProcedimento", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')`;
   binds.dataInicio = dataInicio;
   binds.dataFim = dataFim;
   
@@ -221,17 +223,18 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
  * GET /api/sinistralidade/detalhamento
  * Retorna todos os campos da tabela sinistralidade_import filtrados
  * Suporta paginação (limit/offset opcionais)
+ * FILTRO: Usa dtProcedimento para filtrar por período
  */
 export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promise<{ data: DetalhamentoImport[]; total: number }> {
   const { nrContrato, dataInicio, dataFim, grupoReceita, limit, offset } = filtros;
   
-  // Query para contar total
+  // Query para contar total - usa dtProcedimento
   let countSql = `
     SELECT COUNT(*) AS TOTAL
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR("apolice") = :nrContrato
-      AND TO_DATE("data", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE("data", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   let sql = `
@@ -283,8 +286,8 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       "vlProcedimentoCoparticipacao"
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR("apolice") = :nrContrato
-      AND TO_DATE("data", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE("data", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   const binds: Record<string, any> = {
@@ -301,7 +304,7 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
     binds.grupoReceita = grupoReceita;
   }
   
-  sql += ` ORDER BY "data", "hora", "beneficiario"`;
+  sql += ` ORDER BY "dtProcedimento", "hora", "beneficiario"`;
   
   // Paginação (opcional)
   if (limit !== undefined) {
@@ -326,6 +329,7 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
  * GET /api/sinistralidade/pacientes/busca
  * Busca registros de paciente por nome (case insensitive)
  * Busca em beneficiario e nomePacientePrestador
+ * FILTRO: Usa dtProcedimento para filtrar por período
  */
 export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise<BuscaPacienteImportResult[]> {
   const { nome, dataInicio, dataFim, grupoReceita } = filtros;
@@ -379,8 +383,8 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       "vlProcedimentoCoparticipacao"
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE (UPPER("beneficiario") LIKE UPPER(:nomeBusca) OR UPPER("nomePacientePrestador") LIKE UPPER(:nomeBusca))
-      AND TO_DATE("data", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
-      AND TO_DATE("data", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') >= TO_DATE(:dataInicio, 'DD/MM/RR')
+      AND TO_DATE("dtProcedimento", 'DD/MM/RR') <= TO_DATE(:dataFim, 'DD/MM/RR')
   `;
   
   const binds: Record<string, any> = {
@@ -395,7 +399,7 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
     binds.grupoReceita = grupoReceita;
   }
   
-  sql += ` ORDER BY "beneficiario", "data", "hora"`;
+  sql += ` ORDER BY "beneficiario", "dtProcedimento", "hora"`;
   sql += ` FETCH FIRST 500 ROWS ONLY`;
   
   const rows = await executeQuery<Record<string, any>>(sql, binds);
