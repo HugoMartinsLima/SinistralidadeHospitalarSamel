@@ -1,0 +1,64 @@
+Correção urgente nas APIs de sinistralidade - Nomes de colunas incorretos
+
+As APIs /api/sinistralidade/contratos/resumo e /api/sinistralidade/grupos-receita estão retornando erro ORA-00904: invalid identifier porque estão usando nomes de colunas incorretos.
+
+A tabela sinistralidade_import foi criada com colunas em camelCase, não em UPPERCASE.
+
+Mapeamento correto das colunas:
+Coluna na tabela (camelCase)  |  NÃO usar (incorreto)
+------------------------------|------------------------
+valorTotal                    |  VALOR_TOTAL
+grupoReceita                  |  GRUPO_RECEITA
+apolice                       |  APOLICE
+contratante                   |  CONTRATANTE
+valor                         |  VALOR
+tipoDependente                |  TIPO_DEPENDENTE
+beneficiario                  |  BENEFICIARIO
+data                          |  DATA
+dtProcedimento                |  DT_PROCEDIMENTO
+nomePacientePrestador         |  NOME_PACIENTE_PRESTADOR
+tipoServico                   |  TIPOSERVICO
+Correções necessárias:
+1. API /api/sinistralidade/grupos-receita
+
+
+-- ERRADO:
+SELECT DISTINCT GRUPO_RECEITA FROM sinistralidade_import
+
+-- CORRETO:
+SELECT DISTINCT "grupoReceita" FROM sinistralidade_import
+2. API /api/sinistralidade/contratos/resumo
+
+
+-- ERRADO:
+SELECT SI.APOLICE, SI.CONTRATANTE, SUM(SI.VALOR_TOTAL)...
+
+-- CORRETO (usar aspas duplas para colunas camelCase no Oracle):
+SELECT 
+  SI."apolice",
+  SI."contratante",
+  SUM(SI."valorTotal") as sinistroTotal,
+  SUM(CASE WHEN SI."tipoDependente" = 'TITULAR' THEN SI."valorTotal" ELSE 0 END) as sinistroTitular,
+  SUM(CASE WHEN SI."tipoDependente" != 'TITULAR' THEN SI."valorTotal" ELSE 0 END) as sinistrosDependentes,
+  COUNT(DISTINCT SI."beneficiario") as quantidadeBeneficiarios,
+  COUNT(*) as quantidadeAtendimentos
+FROM sinistralidade_import SI
+WHERE SI."apolice" IN (:contratos)
+  AND TO_DATE(SI."data", 'DD/MM/YYYY') BETWEEN TO_DATE(:dataInicio, 'DD/MM/YYYY') AND TO_DATE(:dataFim, 'DD/MM/YYYY')
+GROUP BY SI."apolice", SI."contratante"
+3. API /api/sinistralidade/pacientes/busca
+
+
+-- Usar aspas duplas para colunas camelCase:
+SELECT * FROM sinistralidade_import
+WHERE UPPER("beneficiario") LIKE UPPER('%:nome%')
+   OR UPPER("nomePacientePrestador") LIKE UPPER('%:nome%')
+4. API /api/sinistralidade/detalhamento
+
+
+SELECT * FROM sinistralidade_import
+WHERE "apolice" = :apolice
+  AND TO_DATE("data", 'DD/MM/YYYY') BETWEEN TO_DATE(:dataInicio, 'DD/MM/YYYY') AND TO_DATE(:dataFim, 'DD/MM/YYYY')
+Importante no Oracle:
+Colunas criadas em camelCase precisam de aspas duplas ("nomeColuna") nas queries
+Sem aspas, Oracle converte para UPPERCASE automaticamente e não encontra a coluna
