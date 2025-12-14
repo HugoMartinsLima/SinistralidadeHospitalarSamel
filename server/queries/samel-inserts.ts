@@ -5,15 +5,32 @@ import { SinistralityImport } from '@shared/schema';
 function normalizeDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
   
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-    return dateStr;
+  const str = dateStr.trim();
+  
+  // Formato DD/MM/YYYY (com ou sem hora)
+  // Ex: "01/11/2025" ou "01/11/2025 00:00:00"
+  const matchDMY4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (matchDMY4) {
+    return `${matchDMY4[1]}/${matchDMY4[2]}/${matchDMY4[3]}`;
   }
   
-  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-    const [year, month, day] = dateStr.substring(0, 10).split('-');
-    return `${day}/${month}/${year}`;
+  // Formato DD/MM/YY (ano com 2 dígitos, com ou sem hora)
+  // Ex: "22/11/25" ou "22/11/25 00:00:00"
+  const matchDMY2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})/);
+  if (matchDMY2) {
+    const year2 = parseInt(matchDMY2[3], 10);
+    const year4 = year2 >= 50 ? 1900 + year2 : 2000 + year2;
+    return `${matchDMY2[1]}/${matchDMY2[2]}/${year4}`;
   }
   
+  // Formato ISO: YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS
+  // Ex: "2025-11-01" ou "2025-11-01T00:00:00.000Z"
+  const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (matchISO) {
+    return `${matchISO[3]}/${matchISO[2]}/${matchISO[1]}`;
+  }
+  
+  console.warn(`⚠️ Formato de data não reconhecido: "${dateStr}"`);
   return null;
 }
 
