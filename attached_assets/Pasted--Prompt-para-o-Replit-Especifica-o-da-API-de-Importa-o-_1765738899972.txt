@@ -1,0 +1,155 @@
+## Prompt para o Replit - Especificação da API de Importação
+
+---
+
+### **Endpoint: POST /api/sinistralidade/import**
+
+**Descrição:** Recebe um array de registros de sinistralidade para inserção no Oracle.
+
+---
+
+### **Payload de Entrada**
+
+```json
+{
+  "registros": [
+    {
+      "data": "22/11/2025",
+      "hora": "16:05:05",
+      "beneficiario": "MARIA SILVA",
+      "valor": 150.00,
+      "valorTotal": 150.00,
+      "prestador": "HOSPITAL ABC",
+      "procedimento": "CONSULTA MÉDICA",
+      "grupoReceita": "CONSULTAS",
+      "tipoDependente": "TITULAR",
+      "atendimento": 123456,
+      "autorizacaoOriginal": 789012,
+      "codTuss": 10101012,
+      "eventoTuss": "CONSULTA EM PRONTO",
+      "dataAlta": "22/11/2025 18:30:00",
+      "dtProcedimento": "22/11/2025 16:05:00",
+      "dataValidacaoClinicaExterna": "22/11/2025",
+      "dataNascimento": "15/03/1985",
+      "dtContratacao": "01/01/2020",
+      "dtContrato": "01/01/2018",
+      "apolice": 2444,
+      "ieOrigemProced": 1,
+      "nrSeqProcInterno": 1,
+      "matCliente": 12345,
+      ... // demais campos string
+    }
+  ]
+}
+```
+
+---
+
+### **Mapeamento de Campos e Formatos**
+
+| Campo API (camelCase) | Coluna Oracle | Tipo | Formato | Exemplo |
+|----------------------|---------------|------|---------|---------|
+| `data` | DATA | DATE | DD/MM/YYYY | `22/11/2025` |
+| `hora` | HORA | VARCHAR2(8) | HH:MM:SS | `16:05:05` |
+| `dataAlta` | DATAALTA | DATE | DD/MM/YYYY HH24:MI:SS | `22/11/2025 18:30:00` |
+| `dtProcedimento` | DT_PROCEDIMENTO | DATE | DD/MM/YYYY HH24:MI:SS | `22/11/2025 16:05:00` |
+| `dataValidacaoClinicaExterna` | DATA_VALIDACAO_CLINICA_EXTERNA | DATE | DD/MM/YYYY | `22/11/2025` |
+| `dataNascimento` | DATANASCIMENTO | DATE | DD/MM/YYYY | `15/03/1985` |
+| `dtContratacao` | DT_CONTRATACAO | DATE | DD/MM/YYYY | `01/01/2020` |
+| `dtContrato` | DT_CONTRATO | DATE | DD/MM/YYYY | `01/01/2018` |
+
+---
+
+### **Campos Numéricos** (converter string → number)
+
+```
+atendimento, autorizacaoOriginal, codTuss, ieOrigemProced, 
+nrSeqProcInterno, apolice, matCliente, valor, valorTotal, 
+qtdProcedimento, diasAdesao
+```
+
+---
+
+### **Campos String com Limite**
+
+| Campo | Limite |
+|-------|--------|
+| `eventoTuss` | 20 caracteres |
+
+---
+
+### **SQL Oracle - Exemplo de INSERT**
+
+```sql
+INSERT INTO sinistralidade_import (
+  DATA, HORA, DATAALTA, DT_PROCEDIMENTO, 
+  DATA_VALIDACAO_CLINICA_EXTERNA, DATANASCIMENTO, 
+  DT_CONTRATACAO, DT_CONTRATO, ...
+) VALUES (
+  -- Campo DATA: apenas data (sem hora)
+  TO_DATE(:data, 'DD/MM/YYYY'),
+
+  -- Campo HORA: armazenar como VARCHAR2
+  :hora,
+
+  -- Campos com DATA E HORA
+  CASE WHEN :dataAlta IS NOT NULL 
+    THEN TO_DATE(:dataAlta, 'DD/MM/YYYY HH24:MI:SS') 
+    ELSE NULL END,
+
+  CASE WHEN :dtProcedimento IS NOT NULL 
+    THEN TO_DATE(:dtProcedimento, 'DD/MM/YYYY HH24:MI:SS') 
+    ELSE NULL END,
+
+  -- Campos apenas DATA
+  CASE WHEN :dataValidacaoClinicaExterna IS NOT NULL 
+    THEN TO_DATE(:dataValidacaoClinicaExterna, 'DD/MM/YYYY') 
+    ELSE NULL END,
+
+  CASE WHEN :dataNascimento IS NOT NULL 
+    THEN TO_DATE(:dataNascimento, 'DD/MM/YYYY') 
+    ELSE NULL END,
+
+  CASE WHEN :dtContratacao IS NOT NULL 
+    THEN TO_DATE(:dtContratacao, 'DD/MM/YYYY') 
+    ELSE NULL END,
+
+  CASE WHEN :dtContrato IS NOT NULL 
+    THEN TO_DATE(:dtContrato, 'DD/MM/YYYY') 
+    ELSE NULL END,
+
+  ...
+);
+```
+
+---
+
+### **Endpoints Adicionais Necessários**
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/sinistralidade/import/count` | Retorna `{ count: number }` |
+| DELETE | `/api/sinistralidade/import` | Limpa toda a tabela |
+
+---
+
+### **Headers Requeridos**
+
+```
+Content-Type: application/json
+ngrok-skip-browser-warning: true
+```
+
+---
+
+### **Resposta Esperada**
+
+**Sucesso:**
+```json
+{ "success": true, "inserted": 25 }
+```
+
+**Erro:**
+```json
+{ "success": false, "error": "ORA-01830: date format picture ends..." }
+```
