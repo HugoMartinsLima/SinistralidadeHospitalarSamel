@@ -1,0 +1,199 @@
+## Contexto do Projeto
+
+Tenho um sistema de gestão de sinistralidade de planos de saúde. Já existe uma tabela chamada `sinistralidade_import` que recebe dados importados via planilha Excel. Também existe uma tabela `sini_empresa_breakeven` que armazena os percentuais de breakeven por contrato.
+
+Preciso criar 4 novas APIs para análise dos dados importados na tabela `sinistralidade_import`.
+
+---
+
+## Estrutura da Tabela `sinistralidade_import`
+
+A tabela possui as seguintes colunas (camelCase no banco):
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| data | VARCHAR | Data do atendimento (DD/MM/YYYY) |
+| hora | VARCHAR | Hora do atendimento |
+| dataAlta | VARCHAR | Data de alta |
+| tipoInternacao | VARCHAR | Tipo de internação |
+| caraterAtendimento | VARCHAR | Caráter do atendimento |
+| tipoConta | VARCHAR | Tipo de conta |
+| atendimento | NUMBER | Número do atendimento |
+| autorizacaoOriginal | NUMBER | Autorização original |
+| tipoValidacaoClinicaExterna | VARCHAR | Tipo de validação clínica externa |
+| dataValidacaoClinicaExterna | VARCHAR | Data validação clínica externa |
+| dtProcedimento | VARCHAR | Data/hora do procedimento (DD/MM/YYYY HH:mm:ss) |
+| codTuss | NUMBER | Código TUSS |
+| ieOrigemProced | NUMBER | Origem do procedimento |
+| eventoTuss | VARCHAR(20) | Evento TUSS |
+| nrSeqProcInterno | NUMBER | Sequência procedimento interno |
+| nmProced | VARCHAR | Nome do procedimento |
+| tipoServico | VARCHAR | Tipo de serviço |
+| grupoReceita | VARCHAR | Grupo de receita |
+| tipoConsulta | VARCHAR | Tipo de consulta |
+| apolice | NUMBER | Número do contrato/apólice |
+| contratante | VARCHAR | Nome do contratante/estipulante |
+| plano | VARCHAR | Nome do plano |
+| codBeneficiario | VARCHAR | Código do beneficiário |
+| nomePacientePrestador | VARCHAR | Nome paciente no prestador |
+| beneficiario | VARCHAR | Nome do beneficiário |
+| sexo | VARCHAR | Sexo (M/F) |
+| dataNascimento | VARCHAR | Data de nascimento |
+| faixaEtaria | VARCHAR | Faixa etária |
+| matCliente | NUMBER | Matrícula do cliente |
+| tipoDependente | VARCHAR | "TITULAR" ou "DEPENDENTE" |
+| titular | VARCHAR | Nome do titular |
+| prestador | VARCHAR | Nome do prestador |
+| especialidade | VARCHAR | Especialidade médica |
+| qtde | NUMBER | Quantidade |
+| valor | NUMBER | Valor unitário |
+| valorTotal | NUMBER | Valor total |
+| setorAtendimento | VARCHAR | Setor de atendimento |
+| seContinuidade | VARCHAR | Se é continuidade |
+| dtContratacao | VARCHAR | Data de contratação |
+| dtContrato | VARCHAR | Data do contrato |
+| diasAdesao | NUMBER | Dias de adesão |
+| cidDoenca | VARCHAR | CID da doença |
+| subEstipulante | VARCHAR | Sub-estipulante |
+| formaChegada | VARCHAR | Forma de chegada |
+| vlProcedimentoCoparticipacao | NUMBER | Valor coparticipação |
+
+---
+
+## API 1: GET /api/sinistralidade/contratos/resumo
+
+**Objetivo**: Retornar resumo agregado dos contratos da tabela `sinistralidade_import`.
+
+**Query Parameters**:
+- `dataInicio` (obrigatório): Data inicial no formato DD/MM/YYYY
+- `dataFim` (obrigatório): Data final no formato DD/MM/YYYY
+- `contratos` (opcional): Lista de números de contratos separados por vírgula (ex: "2444,3001,4522")
+- `grupoReceita` (opcional): Filtrar por grupo de receita específico
+
+**Lógica**:
+1. Filtrar registros onde `data` está entre dataInicio e dataFim
+2. Agrupar por `apolice` (número do contrato)
+3. Para cada contrato, calcular:
+   - `nrContrato`: campo apolice
+   - `dsEstipulante`: campo contratante (primeiro registro do grupo)
+   - `sinistroTotal`: SUM(valorTotal) de todos os registros
+   - `sinistroTitular`: SUM(valorTotal) WHERE tipoDependente = 'TITULAR'
+   - `sinistrosDependentes`: SUM(valorTotal) WHERE tipoDependente = 'DEPENDENTE'
+   - `quantidadeBeneficiarios`: COUNT(DISTINCT codBeneficiario)
+   - `quantidadeAtendimentos`: COUNT(DISTINCT atendimento)
+4. Para cada contrato, buscar o breakeven na tabela `sini_empresa_breakeven` (se não existir, usar 75%)
+
+**Response**:
+```json
+{
+  "data": [
+    {
+      "nrContrato": 2444,
+      "dsEstipulante": "EMPRESA EXEMPLO LTDA",
+      "sinistroTotal": 150000.50,
+      "sinistroTitular": 100000.00,
+      "sinistrosDependentes": 50000.50,
+      "quantidadeBeneficiarios": 45,
+      "quantidadeAtendimentos": 520,
+      "breakeven": 75.0
+    }
+  ],
+  "total": 10
+}
+API 2: GET /api/sinistralidade/detalhamento
+Objetivo: Retornar todos os registros detalhados de um contrato específico.
+
+Query Parameters:
+
+nrContrato (obrigatório): Número do contrato/apólice
+dataInicio (obrigatório): Data inicial no formato DD/MM/YYYY
+dataFim (obrigatório): Data final no formato DD/MM/YYYY
+grupoReceita (opcional): Filtrar por grupo de receita específico
+limit (opcional, default: 10000): Limite de registros
+offset (opcional, default: 0): Offset para paginação
+Lógica:
+
+Filtrar registros WHERE apolice = nrContrato AND data BETWEEN dataInicio AND dataFim
+Se grupoReceita informado, adicionar filtro WHERE grupoReceita = ?
+Retornar TODOS os campos da tabela
+Response:
+
+
+{
+  "data": [
+    {
+      "data": "01/11/2024",
+      "hora": "08:30:00",
+      "beneficiario": "JOAO DA SILVA",
+      "tipoDependente": "TITULAR",
+      "valorTotal": 250.00,
+      "grupoReceita": "EXAMES",
+      "nmProced": "HEMOGRAMA COMPLETO",
+      ... (todos os 40+ campos)
+    }
+  ],
+  "pagination": {
+    "limit": 10000,
+    "offset": 0,
+    "total": 526
+  }
+}
+API 3: GET /api/sinistralidade/pacientes/busca
+Objetivo: Buscar paciente por nome em todos os contratos da tabela importada.
+
+Query Parameters:
+
+nome (obrigatório): Nome do paciente (mínimo 3 caracteres)
+dataInicio (obrigatório): Data inicial no formato DD/MM/YYYY
+dataFim (obrigatório): Data final no formato DD/MM/YYYY
+grupoReceita (opcional): Filtrar por grupo de receita
+Lógica:
+
+Buscar registros WHERE (UPPER(beneficiario) LIKE '%NOME%' OR UPPER(nomePacientePrestador) LIKE '%NOME%')
+Filtrar por data BETWEEN dataInicio AND dataFim
+Retornar todos os registros encontrados
+Response:
+
+
+{
+  "data": [
+    {
+      "apolice": 2444,
+      "contratante": "EMPRESA X",
+      "beneficiario": "JOAO DA SILVA",
+      "data": "15/11/2024",
+      "valorTotal": 500.00,
+      "grupoReceita": "CONSULTAS",
+      ... (demais campos relevantes)
+    }
+  ],
+  "total": 15
+}
+API 4: GET /api/sinistralidade/grupos-receita
+Objetivo: Listar todos os grupos de receita únicos presentes nos dados importados.
+
+Query Parameters: Nenhum
+
+Lógica:
+
+SELECT DISTINCT grupoReceita FROM sinistralidade_import WHERE grupoReceita IS NOT NULL
+Ordenar alfabeticamente
+Response:
+
+
+{
+  "data": [
+    { "dsGrupoReceita": "CONSULTAS" },
+    { "dsGrupoReceita": "EXAMES" },
+    { "dsGrupoReceita": "INTERNACAO" },
+    { "dsGrupoReceita": "MATERIAIS" }
+  ],
+  "total": 4
+}
+Observações Importantes
+Headers: Todas as APIs devem aceitar o header ngrok-skip-browser-warning: true
+CORS: Habilitar CORS para todas as origens
+Formato de datas: O banco armazena datas como strings no formato DD/MM/YYYY. Fazer a conversão adequada para comparação
+Breakeven: Quando buscar breakeven de um contrato, se não existir registro na tabela sini_empresa_breakeven, retornar 75 como default
+Case insensitive: Busca de pacientes deve ser case insensitive
+Performance: Para a API de resumo, usar agregações SQL ao invés de processar em memória
