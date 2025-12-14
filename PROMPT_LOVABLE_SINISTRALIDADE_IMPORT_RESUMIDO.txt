@@ -1,0 +1,46 @@
+INTEGRAÇÃO API SINISTRALIDADE IMPORT - ANÁLISE DE DADOS
+
+Use estas 4 APIs para análise dos dados importados de sinistralidade:
+
+=== 1. RESUMO POR CONTRATO ===
+GET /api/sinistralidade/contratos/resumo?dataInicio=01/01/2024&dataFim=31/12/2024&contratos=123,456&grupoReceita=CONSULTAS
+
+Resposta: { data: [{ apolice, contratante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos, breakeven }], total }
+
+- Agrupa por apólice com totais financeiros
+- Breakeven vem da tabela sini_empresa_breakeven (default 75%)
+
+=== 2. DETALHAMENTO COMPLETO ===
+GET /api/sinistralidade/detalhamento?nrContrato=12345&dataInicio=01/01/2024&dataFim=31/12/2024&grupoReceita=CONSULTAS&limit=50&offset=0
+
+Resposta: { data: [45 campos por registro], total, pagination, filters }
+
+- Retorna TODOS os 45 campos da tabela
+- Paginação opcional (sem limit = retorna TODOS)
+
+=== 3. BUSCA PACIENTE ===
+GET /api/sinistralidade/pacientes/busca?nome=SILVA&dataInicio=01/01/2024&dataFim=31/12/2024&grupoReceita=CONSULTAS
+
+Resposta: { data: [45 campos], total, paciente: "SILVA", filters }
+
+- Busca case insensitive em beneficiario e nomePacientePrestador
+- Limitado a 500 registros
+
+=== 4. GRUPOS DE RECEITA ===
+GET /api/sinistralidade/grupos-receita
+
+Resposta: { data: [{ grupoReceita: "CONSULTAS" }, ...], total }
+
+- Sem parâmetros
+- Ordenado alfabeticamente
+
+=== HOOKS REACT ===
+
+const { data, isLoading } = useQuery({
+  queryKey: ['/api/sinistralidade/contratos/resumo', dataInicio, dataFim],
+  queryFn: () => fetch(`/api/sinistralidade/contratos/resumo?dataInicio=${dataInicio}&dataFim=${dataFim}`).then(r => r.json()),
+  enabled: !!dataInicio && !!dataFim,
+});
+
+=== FORMATO DATAS ===
+DD/MM/YYYY (exemplo: 01/01/2024)

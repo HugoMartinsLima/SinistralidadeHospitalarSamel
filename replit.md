@@ -62,6 +62,24 @@ The API is built using Node.js with the Express framework. It connects to an Ora
       - `POST /api/breakeven/batch` - Salva múltiplos em lote
       - `DELETE /api/breakeven/:nrContrato` - Remove breakeven
       - **Documentação Lovable**: `PROMPT_LOVABLE_BREAKEVEN.md` e `PROMPT_LOVABLE_BREAKEVEN_RESUMIDO.txt`
+    - **Análise de Sinistralidade Importada**: 4 APIs para análise dos dados na tabela `SAMEL.SINISTRALIDADE_IMPORT`
+      - `GET /api/sinistralidade/contratos/resumo` - Dados agregados por contrato para dashboard
+        - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula), `grupoReceita` (opcional)
+        - Inclui breakeven da tabela `sini_empresa_breakeven` (default 75%)
+        - Resposta: `{ data: [{ apolice, contratante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos, breakeven }], total }`
+      - `GET /api/sinistralidade/detalhamento` - Todos os 45 campos com paginação opcional
+        - Query params: `nrContrato` (obrigatório), `dataInicio`, `dataFim`, `grupoReceita` (opcional), `limit`, `offset` (opcionais)
+        - Paginação opcional - sem limit retorna TODOS os registros
+        - Resposta: `{ data: [...], total, pagination, filters }`
+      - `GET /api/sinistralidade/pacientes/busca` - Busca case insensitive por nome
+        - Query params: `nome` (obrigatório, min 3 chars), `dataInicio`, `dataFim`, `grupoReceita` (opcional)
+        - Busca em `beneficiario` e `nomePacientePrestador`
+        - Limitado a 500 registros
+        - Resposta: `{ data: [...], total, paciente: "NOME BUSCADO", filters }`
+      - `GET /api/sinistralidade/grupos-receita` - Lista grupos de receita distintos
+        - Sem parâmetros, ordenado alfabeticamente
+        - Resposta: `{ data: [{ grupoReceita: "CONSULTAS" }, ...], total }`
+      - **Documentação Lovable**: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

@@ -8,6 +8,7 @@ import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamen
 import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao, getResumoContratos } from "./queries/novas-apis";
 import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
 import { listarBreakevens, getBreakevenPorContrato, upsertBreakeven, deleteBreakeven, upsertBreakevensBatch } from "./queries/breakeven";
+import { getResumoContratosImport, getDetalhamentoImport, buscaPacienteImport, getGruposReceitaImport } from "./queries/sinistralidade-import";
 import { sinistralityImportRequestSchema, insertBreakevenSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1617,6 +1618,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ENDPOINTS SINISTRALIDADE IMPORT (Análise) ==========
+
+  // GET /api/sinistralidade/contratos/resumo - Resumo agregado por contrato
+  app.get("/api/sinistralidade/contratos/resumo", async (req, res) => {
+    try {
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const contratos = req.query.contratos as string | undefined;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultados = await getResumoContratosImport({
+        dataInicio,
+        dataFim,
+        contratos,
+        grupoReceita,
+      });
+
+      res.json({
+        data: resultados,
+        total: resultados.length,
+        filters: {
+          dataInicio,
+          dataFim,
+          contratos: contratos || 'TODOS',
+          grupoReceita: grupoReceita || 'TODOS',
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar resumo de contratos:', error);
+      res.status(500).json({
+        error: "Erro ao buscar resumo de contratos",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // GET /api/sinistralidade/detalhamento - Detalhamento com todos os campos
+  app.get("/api/sinistralidade/detalhamento", async (req, res) => {
+    try {
+      const nrContrato = Number(req.query.nrContrato);
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+
+      if (!nrContrato || isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "nrContrato é obrigatório e deve ser um número"
+        });
+      }
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultado = await getDetalhamentoImport({
+        nrContrato,
+        dataInicio,
+        dataFim,
+        grupoReceita,
+        limit,
+        offset,
+      });
+
+      res.json({
+        data: resultado.data,
+        total: resultado.total,
+        pagination: {
+          limit: limit || 'ALL',
+          offset: offset || 0,
+        },
+        filters: {
+          nrContrato,
+          dataInicio,
+          dataFim,
+          grupoReceita: grupoReceita || 'TODOS',
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar detalhamento:', error);
+      res.status(500).json({
+        error: "Erro ao buscar detalhamento",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // GET /api/sinistralidade/pacientes/busca - Busca de paciente por nome
+  app.get("/api/sinistralidade/pacientes/busca", async (req, res) => {
+    try {
+      const nome = req.query.nome as string;
+      const dataInicio = req.query.dataInicio as string;
+      const dataFim = req.query.dataFim as string;
+      const grupoReceita = req.query.grupoReceita as string | undefined;
+
+      if (!nome || nome.trim().length < 3) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "O nome do paciente deve ter pelo menos 3 caracteres"
+        });
+      }
+
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+
+      const resultados = await buscaPacienteImport({
+        nome: nome.trim(),
+        dataInicio,
+        dataFim,
+        grupoReceita,
+      });
+
+      res.json({
+        data: resultados,
+        total: resultados.length,
+        paciente: nome.trim().toUpperCase(),
+        filters: {
+          dataInicio,
+          dataFim,
+          grupoReceita: grupoReceita || 'TODOS',
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erro ao buscar paciente:', error);
+      res.status(500).json({
+        error: "Erro ao buscar paciente",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // GET /api/sinistralidade/grupos-receita - Lista grupos de receita distintos
+  app.get("/api/sinistralidade/grupos-receita", async (req, res) => {
+    try {
+      const grupos = await getGruposReceitaImport();
+
+      res.json({
+        data: grupos,
+        total: grupos.length,
+      });
+    } catch (error) {
+      console.error('❌ Erro ao listar grupos de receita:', error);
+      res.status(500).json({
+        error: "Erro ao listar grupos de receita",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // Endpoint de informações da API
   app.get("/api", (req, res) => {
     res.json({
@@ -1652,6 +1818,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "POST", path: "/api/breakeven", description: "Criar ou atualizar breakeven (upsert)" },
         { method: "POST", path: "/api/breakeven/batch", description: "Criar ou atualizar múltiplos breakevens em lote" },
         { method: "DELETE", path: "/api/breakeven/:nrContrato", description: "Remover breakeven de um contrato" },
+        { method: "GET", path: "/api/sinistralidade/contratos/resumo", description: "Resumo agregado por contrato da sinistralidade importada (query: dataInicio, dataFim, contratos, grupoReceita)" },
+        { method: "GET", path: "/api/sinistralidade/detalhamento", description: "Detalhamento completo da sinistralidade importada (query: nrContrato, dataInicio, dataFim, grupoReceita, limit, offset)" },
+        { method: "GET", path: "/api/sinistralidade/pacientes/busca", description: "Busca de paciente por nome na sinistralidade importada (query: nome, dataInicio, dataFim, grupoReceita)" },
+        { method: "GET", path: "/api/sinistralidade/grupos-receita", description: "Lista grupos de receita distintos da sinistralidade importada" },
       ]
     });
   });
