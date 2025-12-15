@@ -800,7 +800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = req.query.search as string | undefined;
 
       const binds: any = {};
-      let whereClause = 'WHERE 1=1 AND a.cd_classif_contrato NOT IN (3)';
+      let whereClause = 'WHERE 1=1 AND a.cd_classif_contrato NOT IN (3) AND a.ie_situacao NOT IN (4)';
 
       // Filtro de busca (número do contrato ou razão social)
       if (search) {
