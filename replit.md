@@ -102,6 +102,7 @@ The API is built using Node.js with the Express framework. It connects to an Ora
         - `VL_LIMITADOR_TECNICO` (NUMBER 15,2) - Valor do limitador técnico
         - `PC_DISTORCAO` (NUMBER 8,4) - Percentual de distorção
         - `VL_APORTE_FINANCEIRO` (NUMBER 15,2) - Valor do aporte financeiro
+      - **Documentação Lovable**: `PROMPT_LOVABLE_EVOLUCAO_CONTRATO.md` e `PROMPT_LOVABLE_EVOLUCAO_RESUMIDO.txt`
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

@@ -1,0 +1,57 @@
+Crie uma página para gerenciar a evolução mensal de contratos com tabela editável.
+
+API: https://seu-dominio.replit.app
+
+ENDPOINTS:
+- GET /api/evolucao-contrato/:nrContrato - Lista todos os meses
+- POST /api/evolucao-contrato - Salva (insert ou update)
+- DELETE /api/evolucao-contrato/:nrContrato/:periodo - Remove
+
+CAMPOS:
+- nrContrato (number) - Número do contrato
+- periodo (string) - Formato DD/MM/YYYY (sempre dia 01)
+- vlPremio, vlPremioContinuidade, vlPremioTotal (currency)
+- vlSinistro (currency)
+- pcSinistralidade (%) - Calculado: sinistro/premioTotal*100
+- vlLimitadorTecnico (currency) - 75% do prêmio
+- pcDistorcao (%)
+- vlAporteFinanceiro (currency)
+
+INTERFACE:
+1. Tabela editável - clique na linha para editar
+2. Cores por sinistralidade: <60% verde, 60-75% amarelo, >75% vermelho
+3. Cards com totais no rodapé
+4. Botões salvar/excluir em cada linha
+
+CÓDIGO ESSENCIAL:
+
+```tsx
+// Buscar dados
+const { data } = useQuery({
+  queryKey: ['/api/evolucao-contrato', nrContrato],
+  queryFn: () => fetch(`${API}/api/evolucao-contrato/${nrContrato}`).then(r => r.json())
+});
+
+// Salvar (POST faz upsert automático)
+const salvar = useMutation({
+  mutationFn: (registro) => fetch(`${API}/api/evolucao-contrato`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(registro)
+  }),
+  onSuccess: () => queryClient.invalidateQueries(['/api/evolucao-contrato', nrContrato])
+});
+
+// Excluir
+const excluir = useMutation({
+  mutationFn: (periodo) => fetch(
+    `${API}/api/evolucao-contrato/${nrContrato}/${encodeURIComponent(periodo)}`,
+    { method: 'DELETE' }
+  )
+});
+```
+
+REGRAS:
+- POST funciona como UPSERT (insere ou atualiza)
+- Período sempre primeiro dia do mês
+- Calcular automaticamente: vlPremioTotal, pcSinistralidade, vlLimitadorTecnico
