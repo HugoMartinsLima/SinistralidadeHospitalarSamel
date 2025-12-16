@@ -80,6 +80,28 @@ The API is built using Node.js with the Express framework. It connects to an Ora
         - Sem parâmetros, ordenado alfabeticamente
         - Resposta: `{ data: [{ grupoReceita: "CONSULTAS" }, ...], total }`
       - **Documentação Lovable**: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
+    - **Evolução Mensal de Contrato**: Endpoints CRUD para tabela `SAMEL.SINI_EVOLUCAO_CONTRATO`
+      - `GET /api/evolucao-contrato/:nrContrato` - Lista todos os registros de evolução de um contrato
+        - Resposta: `{ data: [...], total: N, nrContrato: N }`
+      - `GET /api/evolucao-contrato/:nrContrato/:periodo` - Busca registro específico
+        - Período no formato: `DD/MM/YYYY` (primeiro dia do mês)
+        - Resposta: `{ nrContrato, periodo, vlPremio, vlPremioContinuidade, vlPremioTotal, vlSinistro, pcSinistralidade, vlLimitadorTecnico, pcDistorcao, vlAporteFinanceiro }`
+      - `POST /api/evolucao-contrato` - Insere ou atualiza registro (UPSERT)
+        - Body: `{ nrContrato, periodo, vlPremio, vlPremioContinuidade, vlPremioTotal, vlSinistro, pcSinistralidade, vlLimitadorTecnico, pcDistorcao, vlAporteFinanceiro }`
+        - Resposta: `{ success: true, message: "...", action: "insert" | "update" }`
+      - `PUT /api/evolucao-contrato/:nrContrato/:periodo` - Atualiza registro existente
+      - `DELETE /api/evolucao-contrato/:nrContrato/:periodo` - Remove registro
+      - **Campos da tabela**:
+        - `NR_CONTRATO` (NUMBER) - Número do contrato
+        - `PERIODO` (DATE) - Mês/ano de referência
+        - `VL_PREMIO` (NUMBER 15,2) - Valor do prêmio
+        - `VL_PREMIO_CONTINUIDADE` (NUMBER 15,2) - Valor do prêmio continuidade
+        - `VL_PREMIO_TOTAL` (NUMBER 15,2) - Soma prêmio + continuidade
+        - `VL_SINISTRO` (NUMBER 15,2) - Valor do sinistro
+        - `PC_SINISTRALIDADE` (NUMBER 8,4) - Percentual de sinistralidade
+        - `VL_LIMITADOR_TECNICO` (NUMBER 15,2) - Valor do limitador técnico
+        - `PC_DISTORCAO` (NUMBER 8,4) - Percentual de distorção
+        - `VL_APORTE_FINANCEIRO` (NUMBER 15,2) - Valor do aporte financeiro
     - **Informative Endpoints**: `/api` provides general API information and available endpoints.
     - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
     - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.

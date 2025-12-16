@@ -9,6 +9,7 @@ import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoP
 import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
 import { listarBreakevens, getBreakevenPorContrato, upsertBreakeven, deleteBreakeven, upsertBreakevensBatch } from "./queries/breakeven";
 import { getResumoContratosImport, getDetalhamentoImport, buscaPacienteImport, getGruposReceitaImport } from "./queries/sinistralidade-import";
+import { listarEvolucaoContrato, buscarEvolucaoContrato, inserirEvolucaoContrato, atualizarEvolucaoContrato, excluirEvolucaoContrato, upsertEvolucaoContrato } from "./queries/evolucao-contrato";
 import { sinistralityImportRequestSchema, insertBreakevenSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1842,8 +1843,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/sinistralidade/detalhamento", description: "Detalhamento completo da sinistralidade importada (query: nrContrato, dataInicio, dataFim, grupoReceita, limit, offset)" },
         { method: "GET", path: "/api/sinistralidade/pacientes/busca", description: "Busca de paciente por nome na sinistralidade importada (query: nome, dataInicio, dataFim, grupoReceita)" },
         { method: "GET", path: "/api/sinistralidade/grupos-receita", description: "Lista grupos de receita distintos da sinistralidade importada" },
+        { method: "GET", path: "/api/evolucao-contrato/:nrContrato", description: "Listar evolução mensal de um contrato" },
+        { method: "GET", path: "/api/evolucao-contrato/:nrContrato/:periodo", description: "Buscar registro específico de evolução" },
+        { method: "POST", path: "/api/evolucao-contrato", description: "Inserir ou atualizar evolução contrato (upsert)" },
+        { method: "PUT", path: "/api/evolucao-contrato/:nrContrato/:periodo", description: "Atualizar evolução contrato existente" },
+        { method: "DELETE", path: "/api/evolucao-contrato/:nrContrato/:periodo", description: "Remover evolução contrato" },
       ]
     });
+  });
+
+  // ============================================================
+  // ENDPOINTS EVOLUÇÃO CONTRATO (SINI_EVOLUCAO_CONTRATO)
+  // ============================================================
+
+  // GET /api/evolucao-contrato/:nrContrato - Listar todos os registros de um contrato
+  app.get("/api/evolucao-contrato/:nrContrato", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "nrContrato deve ser um número"
+        });
+      }
+      
+      const registros = await listarEvolucaoContrato(nrContrato);
+      
+      res.json({
+        data: registros,
+        total: registros.length,
+        nrContrato
+      });
+    } catch (error) {
+      console.error('❌ Erro ao listar evolução contrato:', error);
+      res.status(500).json({
+        error: "Erro ao listar evolução contrato",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // GET /api/evolucao-contrato/:nrContrato/:periodo - Buscar registro específico
+  app.get("/api/evolucao-contrato/:nrContrato/:periodo", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      const periodo = req.params.periodo;
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "nrContrato deve ser um número"
+        });
+      }
+      
+      const registro = await buscarEvolucaoContrato(nrContrato, periodo);
+      
+      if (!registro) {
+        return res.status(404).json({
+          error: "Não encontrado",
+          message: `Registro não encontrado para contrato ${nrContrato} período ${periodo}`
+        });
+      }
+      
+      res.json(registro);
+    } catch (error) {
+      console.error('❌ Erro ao buscar evolução contrato:', error);
+      res.status(500).json({
+        error: "Erro ao buscar evolução contrato",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // POST /api/evolucao-contrato - Inserir ou atualizar (upsert)
+  app.post("/api/evolucao-contrato", async (req, res) => {
+    try {
+      const dados = req.body;
+      
+      if (!dados.nrContrato || !dados.periodo) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "nrContrato e periodo são obrigatórios"
+        });
+      }
+      
+      const resultado = await upsertEvolucaoContrato({
+        nrContrato: Number(dados.nrContrato),
+        periodo: dados.periodo,
+        vlPremio: dados.vlPremio ?? 0,
+        vlPremioContinuidade: dados.vlPremioContinuidade ?? 0,
+        vlPremioTotal: dados.vlPremioTotal ?? 0,
+        vlSinistro: dados.vlSinistro ?? 0,
+        pcSinistralidade: dados.pcSinistralidade ?? 0,
+        vlLimitadorTecnico: dados.vlLimitadorTecnico ?? 0,
+        pcDistorcao: dados.pcDistorcao ?? 0,
+        vlAporteFinanceiro: dados.vlAporteFinanceiro ?? 0,
+      });
+      
+      res.status(resultado.action === 'insert' ? 201 : 200).json(resultado);
+    } catch (error) {
+      console.error('❌ Erro ao salvar evolução contrato:', error);
+      res.status(500).json({
+        error: "Erro ao salvar evolução contrato",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // PUT /api/evolucao-contrato/:nrContrato/:periodo - Atualizar registro existente
+  app.put("/api/evolucao-contrato/:nrContrato/:periodo", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      const periodo = req.params.periodo;
+      const dados = req.body;
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "nrContrato deve ser um número"
+        });
+      }
+      
+      // Buscar registro atual para preservar valores não enviados
+      const registroAtual = await buscarEvolucaoContrato(nrContrato, periodo);
+      
+      if (!registroAtual) {
+        return res.status(404).json({
+          error: "Não encontrado",
+          message: `Registro não encontrado para contrato ${nrContrato} período ${periodo}`
+        });
+      }
+      
+      const resultado = await atualizarEvolucaoContrato(nrContrato, periodo, {
+        vlPremio: dados.vlPremio !== undefined ? dados.vlPremio : registroAtual.vlPremio,
+        vlPremioContinuidade: dados.vlPremioContinuidade !== undefined ? dados.vlPremioContinuidade : registroAtual.vlPremioContinuidade,
+        vlPremioTotal: dados.vlPremioTotal !== undefined ? dados.vlPremioTotal : registroAtual.vlPremioTotal,
+        vlSinistro: dados.vlSinistro !== undefined ? dados.vlSinistro : registroAtual.vlSinistro,
+        pcSinistralidade: dados.pcSinistralidade !== undefined ? dados.pcSinistralidade : registroAtual.pcSinistralidade,
+        vlLimitadorTecnico: dados.vlLimitadorTecnico !== undefined ? dados.vlLimitadorTecnico : registroAtual.vlLimitadorTecnico,
+        pcDistorcao: dados.pcDistorcao !== undefined ? dados.pcDistorcao : registroAtual.pcDistorcao,
+        vlAporteFinanceiro: dados.vlAporteFinanceiro !== undefined ? dados.vlAporteFinanceiro : registroAtual.vlAporteFinanceiro,
+      });
+      
+      res.json(resultado);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar evolução contrato:', error);
+      res.status(500).json({
+        error: "Erro ao atualizar evolução contrato",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
+  // DELETE /api/evolucao-contrato/:nrContrato/:periodo - Remover registro
+  app.delete("/api/evolucao-contrato/:nrContrato/:periodo", async (req, res) => {
+    try {
+      const nrContrato = Number(req.params.nrContrato);
+      const periodo = req.params.periodo;
+      
+      if (isNaN(nrContrato)) {
+        return res.status(400).json({
+          error: "Parâmetro inválido",
+          message: "nrContrato deve ser um número"
+        });
+      }
+      
+      const resultado = await excluirEvolucaoContrato(nrContrato, periodo);
+      
+      if (!resultado.success) {
+        return res.status(404).json({
+          error: "Não encontrado",
+          message: resultado.message
+        });
+      }
+      
+      res.json(resultado);
+    } catch (error) {
+      console.error('❌ Erro ao excluir evolução contrato:', error);
+      res.status(500).json({
+        error: "Erro ao excluir evolução contrato",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
   });
 
   const httpServer = createServer(app);
