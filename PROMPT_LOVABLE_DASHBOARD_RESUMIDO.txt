@@ -1,0 +1,58 @@
+Crie um dashboard para visualizar dados consolidados de evolução de contratos com KPIs e gráficos.
+
+API: https://seu-dominio.replit.app
+
+ENDPOINT:
+GET /api/evolucao-contrato/consolidado?dataInicio=01/01/2024&dataFim=31/12/2024&contratos=2444,2445
+
+RESPOSTA:
+{
+  "data": [{ nrContrato, periodo, vlPremioTotal, vlSinistro, pcSinistralidade, pcDistorcao, ... }],
+  "aggregated": {
+    "totalPremio": 237000,
+    "totalPremioTotal": 244000,
+    "totalSinistro": 215000,
+    "sinistralidadeMedia": 88.11,
+    "totalContratos": 2,
+    "totalRegistros": 3
+  }
+}
+
+KPIs PARA EXIBIR:
+1. Sinistralidade (aggregated.sinistralidadeMedia) - cores: <60% verde, 60-75% amarelo, >75% vermelho
+2. Custo Assistencial (aggregated.totalSinistro)
+3. Receita/Prêmio (aggregated.totalPremioTotal)
+4. Total Contratos (aggregated.totalContratos)
+
+GRÁFICOS:
+1. Linha: Evolução mensal de Prêmio, Sinistro e Sinistralidade %
+2. Barras: Comparativo Prêmio vs Sinistro por mês
+
+FILTROS:
+- dataInicio (DD/MM/YYYY) - obrigatório
+- dataFim (DD/MM/YYYY) - obrigatório
+- contratos (lista separada por vírgula) - opcional
+
+CÓDIGO ESSENCIAL:
+```tsx
+const { data } = useQuery({
+  queryKey: ['/api/evolucao-contrato/consolidado', dataInicio, dataFim, contratos],
+  queryFn: () => fetch(`${API}/api/evolucao-contrato/consolidado?dataInicio=${dataInicio}&dataFim=${dataFim}&contratos=${contratos}`).then(r => r.json())
+});
+
+// KPIs
+<Card>
+  <CardTitle>Sinistralidade</CardTitle>
+  <div className={data.aggregated.sinistralidadeMedia > 75 ? 'text-red-600' : 'text-green-600'}>
+    {data.aggregated.sinistralidadeMedia.toFixed(2)}%
+  </div>
+</Card>
+
+// Gráfico (usar recharts)
+<LineChart data={chartData}>
+  <Line dataKey="premioTotal" stroke="#22c55e" />
+  <Line dataKey="sinistro" stroke="#ef4444" />
+</LineChart>
+```
+
+INSTALAR: npm install recharts

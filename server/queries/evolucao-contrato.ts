@@ -288,3 +288,100 @@ export async function upsertEvolucaoContrato(dados: EvolucaoContratoInput): Prom
     return { success: true, message: 'Registro inserido com sucesso', action: 'insert' };
   }
 }
+
+export interface EvolucaoConsolidadaResult {
+  data: EvolucaoContrato[];
+  aggregated: {
+    totalPremio: number;
+    totalPremioContinuidade: number;
+    totalPremioTotal: number;
+    totalSinistro: number;
+    sinistralidadeMedia: number;
+    totalContratos: number;
+    totalRegistros: number;
+  };
+  pagination: {
+    total: number;
+  };
+}
+
+export async function buscarEvolucaoConsolidada(
+  dataInicio: string,
+  dataFim: string,
+  contratos?: number[]
+): Promise<EvolucaoConsolidadaResult> {
+  console.log('📊 Buscando evolução consolidada:', { dataInicio, dataFim, contratos });
+  
+  let whereContratos = '';
+  const binds: Record<string, any> = { dataInicio, dataFim };
+  
+  if (contratos && contratos.length > 0) {
+    const placeholders = contratos.map((_, i) => `:c${i}`).join(',');
+    whereContratos = `AND NR_CONTRATO IN (${placeholders})`;
+    contratos.forEach((c, i) => {
+      binds[`c${i}`] = c;
+    });
+  }
+  
+  const sqlData = `
+    SELECT 
+      NR_CONTRATO,
+      PERIODO,
+      VL_PREMIO,
+      VL_PREMIO_CONTINUIDADE,
+      VL_PREMIO_TOTAL,
+      VL_SINISTRO,
+      PC_SINISTRALIDADE,
+      VL_LIMITADOR_TECNICO,
+      PC_DISTORCAO,
+      VL_APORTE_FINANCEIRO
+    FROM SAMEL.SINI_EVOLUCAO_CONTRATO
+    WHERE PERIODO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND PERIODO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      ${whereContratos}
+    ORDER BY NR_CONTRATO, PERIODO
+  `;
+  
+  const sqlAggregated = `
+    SELECT 
+      NVL(SUM(VL_PREMIO), 0) as TOTAL_PREMIO,
+      NVL(SUM(VL_PREMIO_CONTINUIDADE), 0) as TOTAL_PREMIO_CONTINUIDADE,
+      NVL(SUM(VL_PREMIO_TOTAL), 0) as TOTAL_PREMIO_TOTAL,
+      NVL(SUM(VL_SINISTRO), 0) as TOTAL_SINISTRO,
+      CASE 
+        WHEN SUM(VL_PREMIO_TOTAL) > 0 
+        THEN ROUND((SUM(VL_SINISTRO) / SUM(VL_PREMIO_TOTAL)) * 100, 2)
+        ELSE 0 
+      END as SINISTRALIDADE_MEDIA,
+      COUNT(DISTINCT NR_CONTRATO) as TOTAL_CONTRATOS,
+      COUNT(*) as TOTAL_REGISTROS
+    FROM SAMEL.SINI_EVOLUCAO_CONTRATO
+    WHERE PERIODO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND PERIODO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      ${whereContratos}
+  `;
+  
+  const [dataRows, aggRows] = await Promise.all([
+    executeQuery<Record<string, any>>(sqlData, binds),
+    executeQuery<Record<string, any>>(sqlAggregated, binds)
+  ]);
+  
+  const data = dataRows.map(normalizeRow);
+  const agg = aggRows[0] || {};
+  
+  return {
+    data,
+    aggregated: {
+      totalPremio: agg.TOTAL_PREMIO ?? 0,
+      totalPremioContinuidade: agg.TOTAL_PREMIO_CONTINUIDADE ?? 0,
+      totalPremioTotal: agg.TOTAL_PREMIO_TOTAL ?? 0,
+      totalSinistro: agg.TOTAL_SINISTRO ?? 0,
+      sinistralidadeMedia: agg.SINISTRALIDADE_MEDIA ?? 0,
+      totalContratos: agg.TOTAL_CONTRATOS ?? 0,
+      totalRegistros: agg.TOTAL_REGISTROS ?? 0,
+    },
+    pagination: {
+      total: data.length
+    }
+  };
+}

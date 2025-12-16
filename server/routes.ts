@@ -9,7 +9,7 @@ import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoP
 import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
 import { listarBreakevens, getBreakevenPorContrato, upsertBreakeven, deleteBreakeven, upsertBreakevensBatch } from "./queries/breakeven";
 import { getResumoContratosImport, getDetalhamentoImport, buscaPacienteImport, getGruposReceitaImport } from "./queries/sinistralidade-import";
-import { listarEvolucaoContrato, buscarEvolucaoContrato, inserirEvolucaoContrato, atualizarEvolucaoContrato, excluirEvolucaoContrato, upsertEvolucaoContrato } from "./queries/evolucao-contrato";
+import { listarEvolucaoContrato, buscarEvolucaoContrato, inserirEvolucaoContrato, atualizarEvolucaoContrato, excluirEvolucaoContrato, upsertEvolucaoContrato, buscarEvolucaoConsolidada } from "./queries/evolucao-contrato";
 import { sinistralityImportRequestSchema, insertBreakevenSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1843,6 +1843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/sinistralidade/detalhamento", description: "Detalhamento completo da sinistralidade importada (query: nrContrato, dataInicio, dataFim, grupoReceita, limit, offset)" },
         { method: "GET", path: "/api/sinistralidade/pacientes/busca", description: "Busca de paciente por nome na sinistralidade importada (query: nome, dataInicio, dataFim, grupoReceita)" },
         { method: "GET", path: "/api/sinistralidade/grupos-receita", description: "Lista grupos de receita distintos da sinistralidade importada" },
+        { method: "GET", path: "/api/evolucao-contrato/consolidado", description: "Dados consolidados para dashboard (query: dataInicio, dataFim, contratos)" },
         { method: "GET", path: "/api/evolucao-contrato/:nrContrato", description: "Listar evolução mensal de um contrato" },
         { method: "GET", path: "/api/evolucao-contrato/:nrContrato/:periodo", description: "Buscar registro específico de evolução" },
         { method: "POST", path: "/api/evolucao-contrato", description: "Inserir ou atualizar evolução contrato (upsert)" },
@@ -1855,6 +1856,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================
   // ENDPOINTS EVOLUÇÃO CONTRATO (SINI_EVOLUCAO_CONTRATO)
   // ============================================================
+
+  // GET /api/evolucao-contrato/consolidado - Dados consolidados para dashboard
+  app.get("/api/evolucao-contrato/consolidado", async (req, res) => {
+    try {
+      const { dataInicio, dataFim, contratos } = req.query;
+      
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+      
+      let listaContratos: number[] | undefined;
+      if (contratos && typeof contratos === 'string' && contratos.trim()) {
+        listaContratos = contratos.split(',').map(c => Number(c.trim())).filter(c => !isNaN(c));
+      }
+      
+      const resultado = await buscarEvolucaoConsolidada(
+        String(dataInicio),
+        String(dataFim),
+        listaContratos
+      );
+      
+      res.json(resultado);
+    } catch (error) {
+      console.error('❌ Erro ao buscar evolução consolidada:', error);
+      res.status(500).json({
+        error: "Erro ao buscar evolução consolidada",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
 
   // GET /api/evolucao-contrato/:nrContrato - Listar todos os registros de um contrato
   app.get("/api/evolucao-contrato/:nrContrato", async (req, res) => {
