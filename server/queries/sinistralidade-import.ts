@@ -17,6 +17,8 @@ export interface ResumoContratoImport {
   quantidadeBeneficiarios: number;
   quantidadeAtendimentos: number;
   breakeven: number;
+  vlMensalidade: number;
+  vlPremioContinuidade: number;
 }
 
 export interface DetalhamentoImport {
@@ -152,6 +154,8 @@ function normalizeKeys<T>(row: Record<string, any>): T {
     'SUB_ESTIPULANTE': 'subEstipulante',
     'FORMA_CHEGADA': 'formaChegada',
     'VL_PROCEDIMENTO_COPARTICIPACAO': 'vlProcedimentoCoparticipacao',
+    'VL_MENSALIDADE': 'vlMensalidade',
+    'VL_PREMIO_CONTINUIDADE': 'vlPremioContinuidade',
   };
   
   const result: Record<string, any> = {};
@@ -180,13 +184,27 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
       NVL(SUM(CASE WHEN UPPER(si.TIPODEPENDENTE) != 'TITULAR' AND si.TIPODEPENDENTE IS NOT NULL THEN si.VALORTOTAL ELSE 0 END), 0) AS SINISTROS_DEPENDENTES,
       COUNT(DISTINCT si.COD_BENEFICIARIO) AS QUANTIDADE_BENEFICIARIOS,
       COUNT(*) AS QUANTIDADE_ATENDIMENTOS,
-      NVL(b.BREAKEVEN, 75) AS BREAKEVEN
+      NVL(b.BREAKEVEN, 75) AS BREAKEVEN,
+      NVL(p.VL_MENSALIDADE, 0) AS VL_MENSALIDADE,
+      NVL(p.VL_PREMIO_CONTINUIDADE, 0) AS VL_PREMIO_CONTINUIDADE
     FROM SAMEL.SINISTRALIDADE_IMPORT si
     LEFT JOIN SAMEL.sini_empresa_breakeven b ON TO_CHAR(si.APOLICE) = b.NR_CONTRATO
+    LEFT JOIN (
+      SELECT 
+        nr_contrato,
+        SUM(vl_mensalidade) AS VL_MENSALIDADE,
+        SUM(vl_premio_continuidade) AS VL_PREMIO_CONTINUIDADE
+      FROM weknow_b.wk_sinistralidade
+      WHERE dt_mes_ref BETWEEN TO_DATE(:dataInicioP, 'DD/MM/YYYY') AND TO_DATE(:dataFimP, 'DD/MM/YYYY')
+      GROUP BY nr_contrato
+    ) p ON si.APOLICE = p.nr_contrato
     WHERE 1=1
   `;
   
-  const binds: Record<string, any> = {};
+  const binds: Record<string, any> = {
+    dataInicioP: dataInicio,
+    dataFimP: dataFim,
+  };
   
   // Filtro de data usando DT_PROCEDIMENTO
   sql += ` AND si.DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')`;
@@ -212,7 +230,7 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
     binds.grupoReceita = grupoReceita;
   }
   
-  sql += ` GROUP BY si.APOLICE, b.BREAKEVEN`;
+  sql += ` GROUP BY si.APOLICE, b.BREAKEVEN, p.VL_MENSALIDADE, p.VL_PREMIO_CONTINUIDADE`;
   sql += ` ORDER BY si.APOLICE`;
   
   const rows = await executeQuery<Record<string, any>>(sql, binds);
