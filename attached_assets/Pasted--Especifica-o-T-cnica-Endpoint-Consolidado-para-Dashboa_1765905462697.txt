@@ -1,0 +1,149 @@
+📋 Especificação Técnica - Endpoint Consolidado para Dashboard
+Endpoint a ser criado:
+GET /api/evolucao-contrato/consolidado
+Query Parameters:
+Parâmetro	Tipo	Obrigatório	Descrição	Exemplo
+dataInicio	string	✅ Sim	Data inicial do período (DD/MM/YYYY)	01/11/2024
+dataFim	string	✅ Sim	Data final do período (DD/MM/YYYY)	30/11/2024
+contratos	string	❌ Não	Lista de contratos separados por vírgula	2444,2445,2446
+Resposta esperada:
+
+{
+  "data": [
+    {
+      "nrContrato": 2444,
+      "periodo": "01/11/2024",
+      "vlPremio": 150000.00,
+      "vlPremioContinuidade": 5000.00,
+      "vlPremioTotal": 155000.00,
+      "vlSinistro": 120000.00,
+      "pcSinistralidade": 77.42,
+      "vlLimitadorTecnico": 116250.00,
+      "pcDistorcao": 3.23,
+      "vlAporteFinanceiro": 5000.00
+    },
+    {
+      "nrContrato": 2444,
+      "periodo": "01/12/2024",
+      "vlPremio": 152000.00,
+      "vlPremioContinuidade": 5200.00,
+      "vlPremioTotal": 157200.00,
+      "vlSinistro": 110000.00,
+      "pcSinistralidade": 69.97,
+      "vlLimitadorTecnico": 117900.00,
+      "pcDistorcao": -6.71,
+      "vlAporteFinanceiro": 0.00
+    },
+    {
+      "nrContrato": 2445,
+      "periodo": "01/11/2024",
+      "vlPremio": 80000.00,
+      "vlPremioContinuidade": 2000.00,
+      "vlPremioTotal": 82000.00,
+      "vlSinistro": 95000.00,
+      "pcSinistralidade": 115.85,
+      "vlLimitadorTecnico": 61500.00,
+      "pcDistorcao": 54.47,
+      "vlAporteFinanceiro": 44666.67
+    }
+  ],
+  "aggregated": {
+    "totalPremio": 237000.00,
+    "totalPremioContinuidade": 7000.00,
+    "totalPremioTotal": 244000.00,
+    "totalSinistro": 215000.00,
+    "sinistralidadeMedia": 88.11,
+    "totalContratos": 2,
+    "totalRegistros": 3
+  },
+  "pagination": {
+    "total": 3
+  }
+}
+SQL sugerido para Oracle:
+
+-- Query principal
+SELECT 
+  NR_CONTRATO as nrContrato,
+  TO_CHAR(DT_PERIODO, 'DD/MM/YYYY') as periodo,
+  VL_PREMIO as vlPremio,
+  VL_PREMIO_CONTINUIDADE as vlPremioContinuidade,
+  VL_PREMIO_TOTAL as vlPremioTotal,
+  VL_SINISTRO as vlSinistro,
+  PC_SINISTRALIDADE as pcSinistralidade,
+  VL_LIMITADOR_TECNICO as vlLimitadorTecnico,
+  PC_DISTORCAO as pcDistorcao,
+  VL_APORTE_FINANCEIRO as vlAporteFinanceiro
+FROM 
+  SAMEL.SINI_EVOLUCAO_CONTRATO
+WHERE 
+  DT_PERIODO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+  AND DT_PERIODO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+  AND (:contratos IS NULL OR NR_CONTRATO IN (:listaContratos))
+ORDER BY 
+  NR_CONTRATO, DT_PERIODO
+
+-- Query para agregados
+SELECT 
+  SUM(VL_PREMIO) as totalPremio,
+  SUM(VL_PREMIO_CONTINUIDADE) as totalPremioContinuidade,
+  SUM(VL_PREMIO_TOTAL) as totalPremioTotal,
+  SUM(VL_SINISTRO) as totalSinistro,
+  CASE 
+    WHEN SUM(VL_PREMIO_TOTAL) > 0 
+    THEN ROUND((SUM(VL_SINISTRO) / SUM(VL_PREMIO_TOTAL)) * 100, 2)
+    ELSE 0 
+  END as sinistralidadeMedia,
+  COUNT(DISTINCT NR_CONTRATO) as totalContratos,
+  COUNT(*) as totalRegistros
+FROM 
+  SAMEL.SINI_EVOLUCAO_CONTRATO
+WHERE 
+  DT_PERIODO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+  AND DT_PERIODO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+  AND (:contratos IS NULL OR NR_CONTRATO IN (:listaContratos))
+Estrutura da Tabela (referência):
+
+-- Tabela: SAMEL.SINI_EVOLUCAO_CONTRATO
+CREATE TABLE SINI_EVOLUCAO_CONTRATO (
+  NR_CONTRATO       NUMBER NOT NULL,
+  DT_PERIODO        DATE NOT NULL,           -- Sempre dia 01 do mês
+  VL_PREMIO         NUMBER(15,2),
+  VL_PREMIO_CONTINUIDADE NUMBER(15,2),
+  VL_PREMIO_TOTAL   NUMBER(15,2),
+  VL_SINISTRO       NUMBER(15,2),
+  PC_SINISTRALIDADE NUMBER(8,2),             -- Percentual
+  VL_LIMITADOR_TECNICO NUMBER(15,2),
+  PC_DISTORCAO      NUMBER(8,2),             -- Percentual
+  VL_APORTE_FINANCEIRO NUMBER(15,2),
+  PRIMARY KEY (NR_CONTRATO, DT_PERIODO)
+);
+Exemplos de chamadas:
+
+# Buscar todos os contratos de novembro/2024
+GET /api/evolucao-contrato/consolidado?dataInicio=01/11/2024&dataFim=30/11/2024
+
+# Buscar contratos específicos de nov a dez/2024
+GET /api/evolucao-contrato/consolidado?dataInicio=01/11/2024&dataFim=31/12/2024&contratos=2444,2445,2446
+
+# Buscar último trimestre de um contrato
+GET /api/evolucao-contrato/consolidado?dataInicio=01/10/2024&dataFim=31/12/2024&contratos=2444
+Mapeamento para Dashboard:
+KPI Dashboard	Campo API
+Sinistralidade	aggregated.sinistralidadeMedia
+Custo Assistencial	aggregated.totalSinistro
+Receita (Prêmio)	aggregated.totalPremioTotal
+Gráfico Mensal	data[] agrupado por periodo
+Distorção Média	Calcular média de pcDistorcao dos registros
+Observações importantes:
+Período sempre dia 01: O campo periodo sempre representa o primeiro dia do mês (ex: 01/11/2024 para novembro/2024)
+
+Filtro de período: A query deve filtrar registros onde DT_PERIODO está dentro do intervalo solicitado
+
+Dados pré-calculados: Todos os campos de porcentagem (pcSinistralidade, pcDistorcao) já vêm calculados da tabela
+
+Agregados opcionais: O objeto aggregated facilita o frontend, mas pode ser calculado no cliente se preferir
+
+Essa especificação é suficiente para o Replit criar o endpoint? Precisa de algum ajuste ou informação adicional?
+
+<lov-actions> <lov-suggestion message="Após o endpoint ser criado, implemente a integração do Dashboard com o novo endpoint /api/evolucao-contrato/consolidado usando os dados pré-calculados da tabela SINI_EVOLUCAO_CONTRATO">Integrar Dashboard com novo endpoint</lov-suggestion> <lov-suggestion message="Adicionar campo de quantidade de beneficiários na tabela SINI_EVOLUCAO_CONTRATO para ter o KPI completo no Dashboard">Adicionar campo beneficiários na tabela</lov-suggestion>
