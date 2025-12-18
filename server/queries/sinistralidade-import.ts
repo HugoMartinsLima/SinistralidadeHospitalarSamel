@@ -210,9 +210,9 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
     dataFimP: dataFim,
   };
   
-  // Filtro de data usando DT_PROCEDIMENTO
-  sql += ` AND si.DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')`;
-  sql += ` AND si.DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')`;
+  // Filtro de data usando DT_PROCEDIMENTO (TRUNC remove horário para incluir o dia inteiro)
+  sql += ` AND TRUNC(si.DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')`;
+  sql += ` AND TRUNC(si.DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')`;
   binds.dataInicio = dataInicio;
   binds.dataFim = dataFim;
   
@@ -250,13 +250,13 @@ export async function getResumoContratosImport(filtros: FiltroResumoContratos): 
 export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promise<{ data: DetalhamentoImport[]; total: number }> {
   const { nrContrato, dataInicio, dataFim, grupoReceita, limit, offset } = filtros;
   
-  // Query para contar total
+  // Query para contar total (TRUNC remove horário para incluir o dia inteiro)
   let countSql = `
     SELECT COUNT(*) AS TOTAL
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   let sql = `
@@ -308,8 +308,8 @@ export async function getDetalhamentoImport(filtros: FiltroDetalhamento): Promis
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE TO_CHAR(APOLICE) = :nrContrato
-      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   const binds: Record<string, any> = {
@@ -405,8 +405,8 @@ export async function buscaPacienteImport(filtros: FiltroBuscaPaciente): Promise
       VL_PROCEDIMENTO_COPARTICIPACAO
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE (UPPER(BENEFICIARIO) LIKE UPPER(:nomeBusca) OR UPPER(NOME_PACIENTE_PRESTADOR) LIKE UPPER(:nomeBusca))
-      AND DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')
   `;
   
   const binds: Record<string, any> = {
@@ -507,6 +507,7 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
   
   // Query para top N grupos - limit inline (sanitizado) pois Oracle não aceita bind em FETCH FIRST
   // ticketMedio = valorTotal / totalProcedimentos (não usar AVG que divide diferente)
+  // TRUNC remove horário para incluir o dia inteiro
   const sqlRanking = `
     SELECT 
       GRUPORECEITA,
@@ -514,8 +515,8 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
       NVL(SUM(VALORTOTAL), 0) AS VALOR_TOTAL,
       ROUND(NVL(SUM(VALORTOTAL), 0) / NULLIF(COUNT(*), 0), 2) AS TICKET_MEDIO
     FROM SAMEL.SINISTRALIDADE_IMPORT
-    WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+    WHERE TRUNC(DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')
       AND GRUPORECEITA IS NOT NULL${filtroContratos}
     GROUP BY GRUPORECEITA
     ORDER BY VALOR_TOTAL DESC
@@ -531,8 +532,8 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
       ROUND(NVL(SUM(VALORTOTAL), 0) / NULLIF(COUNT(*), 0), 2) AS TICKET_MEDIO_GERAL,
       COUNT(DISTINCT GRUPORECEITA) AS TOTAL_GRUPOS
     FROM SAMEL.SINISTRALIDADE_IMPORT
-    WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
-      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+    WHERE TRUNC(DT_PROCEDIMENTO) >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND TRUNC(DT_PROCEDIMENTO) <= TO_DATE(:dataFim, 'DD/MM/YYYY')
       AND GRUPORECEITA IS NOT NULL${filtroContratos}
   `;
   

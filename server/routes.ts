@@ -91,12 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (filters.dataInicio) {
-        sql += ` AND s.data_ocorrencia >= TO_DATE(:dataInicio, 'YYYY-MM-DD')`;
+        sql += ` AND TRUNC(s.data_ocorrencia) >= TO_DATE(:dataInicio, 'YYYY-MM-DD')`;
         binds.dataInicio = filters.dataInicio;
       }
 
       if (filters.dataFim) {
-        sql += ` AND s.data_ocorrencia <= TO_DATE(:dataFim, 'YYYY-MM-DD')`;
+        sql += ` AND TRUNC(s.data_ocorrencia) <= TO_DATE(:dataFim, 'YYYY-MM-DD')`;
         binds.dataFim = filters.dataFim;
       }
 
