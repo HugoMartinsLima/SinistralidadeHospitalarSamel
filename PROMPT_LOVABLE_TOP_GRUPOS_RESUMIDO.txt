@@ -1,0 +1,60 @@
+Crie um componente para exibir o ranking dos grupos de receita mais caros no Dashboard.
+
+API: https://seu-dominio.replit.app
+
+ENDPOINT:
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5
+
+RESPOSTA:
+{
+  "data": [
+    { "gruporeceita": "EXAMES", "totalProcedimentos": 1250, "valorTotal": 485230.50, "ticketMedio": 388.18 },
+    { "gruporeceita": "CONSULTAS", "totalProcedimentos": 3420, "valorTotal": 342000.00, "ticketMedio": 100.00 }
+  ],
+  "totais": {
+    "totalGeral": 1589730.50,
+    "totalProcedimentos": 5847,
+    "ticketMedioGeral": 271.89
+  },
+  "pagination": { "limit": 5, "total": 12 }
+}
+
+PARÂMETROS:
+- dataInicio (obrigatório, DD/MM/YYYY)
+- dataFim (obrigatório, DD/MM/YYYY)
+- limit (opcional, default 10)
+
+CAMPOS:
+- gruporeceita: Nome do grupo
+- totalProcedimentos: Quantidade de procedimentos
+- valorTotal: Soma dos valores (ordenado DESC)
+- ticketMedio: valorTotal / totalProcedimentos
+- totais: Considera TODOS os registros do período (não apenas o limit)
+
+EXIBIÇÃO SUGERIDA:
+1. Card com título "Top Grupos de Receita"
+2. Seção de totais gerais (Total Geral, Procedimentos, Ticket Médio)
+3. Lista rankeada com:
+   - Badge de posição (1, 2, 3...)
+   - Nome do grupo
+   - Valor total (destaque)
+   - Barra de progresso relativa ao maior valor
+   - Quantidade de procedimentos e ticket médio
+
+CÓDIGO ESSENCIAL:
+```tsx
+const { data } = useQuery({
+  queryKey: ['/api/sinistralidade/grupos-receita/ranking', dataInicio, dataFim, limit],
+  queryFn: () => fetch(`${API}/api/sinistralidade/grupos-receita/ranking?dataInicio=${dataInicio}&dataFim=${dataFim}&limit=${limit}`).then(r => r.json())
+});
+
+// Renderizar lista
+{data?.data.map((grupo, index) => (
+  <div key={grupo.gruporeceita}>
+    <Badge>{index + 1}</Badge>
+    <span>{grupo.gruporeceita}</span>
+    <span>{formatCurrency(grupo.valorTotal)}</span>
+    <Progress value={(grupo.valorTotal / data.data[0].valorTotal) * 100} />
+  </div>
+))}
+```

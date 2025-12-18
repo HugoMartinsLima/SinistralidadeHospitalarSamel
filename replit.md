@@ -84,7 +84,9 @@ The API is built using Node.js with the Express framework. It connects to an Ora
         - Resposta: `{ data: [{ gruporeceita, totalProcedimentos, valorTotal, ticketMedio }], totais: { totalGeral, totalProcedimentos, ticketMedioGeral }, pagination: { limit, total } }`
         - Ordenado por `valorTotal DESC` (mais caro primeiro)
         - `totais` considera TODOS os registros (não apenas o limit)
-      - **Documentação Lovable**: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
+      - **Documentação Lovable**: 
+        - Sinistralidade Import: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
+        - Top Grupos Receita: `PROMPT_LOVABLE_TOP_GRUPOS_RECEITA.md` e `PROMPT_LOVABLE_TOP_GRUPOS_RESUMIDO.txt`
     - **Evolução Mensal de Contrato**: Endpoints CRUD para tabela `SAMEL.SINI_EVOLUCAO_CONTRATO`
       - `GET /api/evolucao-contrato/consolidado` - Dados consolidados para dashboard
         - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula)
