@@ -79,6 +79,11 @@ The API is built using Node.js with the Express framework. It connects to an Ora
       - `GET /api/sinistralidade/grupos-receita` - Lista grupos de receita distintos
         - Sem parâmetros, ordenado alfabeticamente
         - Resposta: `{ data: [{ grupoReceita: "CONSULTAS" }, ...], total }`
+      - `GET /api/sinistralidade/grupos-receita/ranking` - Ranking dos grupos mais caros
+        - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `limit` (opcional, default 10)
+        - Resposta: `{ data: [{ gruporeceita, totalProcedimentos, valorTotal, ticketMedio }], totais: { totalGeral, totalProcedimentos, ticketMedioGeral }, pagination: { limit, total } }`
+        - Ordenado por `valorTotal DESC` (mais caro primeiro)
+        - `totais` considera TODOS os registros (não apenas o limit)
       - **Documentação Lovable**: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
     - **Evolução Mensal de Contrato**: Endpoints CRUD para tabela `SAMEL.SINI_EVOLUCAO_CONTRATO`
       - `GET /api/evolucao-contrato/consolidado` - Dados consolidados para dashboard

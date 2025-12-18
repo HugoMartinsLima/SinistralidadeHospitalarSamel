@@ -8,7 +8,7 @@ import { getDetalhamentoApolice, getDetalhamentoApoliceNoDistinct, getDetalhamen
 import { buscaPacientePorNome, listarClassificacoes, getDetalhamentoConsolidadoPorClassificacao, getResumoContratos } from "./queries/novas-apis";
 import { insertSinistralidade, truncateSinistralidade, countSinistralidade } from "./queries/samel-inserts";
 import { listarBreakevens, getBreakevenPorContrato, upsertBreakeven, deleteBreakeven, upsertBreakevensBatch } from "./queries/breakeven";
-import { getResumoContratosImport, getDetalhamentoImport, buscaPacienteImport, getGruposReceitaImport } from "./queries/sinistralidade-import";
+import { getResumoContratosImport, getDetalhamentoImport, buscaPacienteImport, getGruposReceitaImport, getGruposReceitaRanking } from "./queries/sinistralidade-import";
 import { listarEvolucaoContrato, buscarEvolucaoContrato, inserirEvolucaoContrato, atualizarEvolucaoContrato, excluirEvolucaoContrato, upsertEvolucaoContrato, buscarEvolucaoConsolidada } from "./queries/evolucao-contrato";
 import { sinistralityImportRequestSchema, insertBreakevenSchema } from "@shared/schema";
 
@@ -1766,6 +1766,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/sinistralidade/grupos-receita/ranking - Ranking dos grupos mais caros
+  app.get("/api/sinistralidade/grupos-receita/ranking", async (req, res) => {
+    try {
+      const { dataInicio, dataFim, limit } = req.query;
+      
+      if (!dataInicio || !dataFim) {
+        return res.status(400).json({
+          error: "Parâmetros obrigatórios",
+          message: "dataInicio e dataFim são obrigatórios (formato DD/MM/YYYY)"
+        });
+      }
+      
+      // Validar limit se fornecido
+      let parsedLimit = 10;
+      if (limit !== undefined && limit !== '') {
+        parsedLimit = parseInt(String(limit), 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1) {
+          return res.status(400).json({
+            error: "Parâmetro inválido",
+            message: "limit deve ser um número inteiro positivo"
+          });
+        }
+      }
+      
+      const resultado = await getGruposReceitaRanking({
+        dataInicio: String(dataInicio),
+        dataFim: String(dataFim),
+        limit: parsedLimit,
+      });
+      
+      res.json(resultado);
+    } catch (error) {
+      console.error('❌ Erro ao buscar ranking de grupos de receita:', error);
+      res.status(500).json({
+        error: "Erro ao buscar ranking de grupos de receita",
+        message: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
+
   // GET /api/sinistralidade/grupos-receita - Lista grupos de receita distintos
   app.get("/api/sinistralidade/grupos-receita", async (req, res) => {
     try {
@@ -1842,6 +1882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { method: "GET", path: "/api/sinistralidade/contratos/resumo", description: "Resumo agregado por contrato da sinistralidade importada (query: dataInicio, dataFim, contratos, grupoReceita)" },
         { method: "GET", path: "/api/sinistralidade/detalhamento", description: "Detalhamento completo da sinistralidade importada (query: nrContrato, dataInicio, dataFim, grupoReceita, limit, offset)" },
         { method: "GET", path: "/api/sinistralidade/pacientes/busca", description: "Busca de paciente por nome na sinistralidade importada (query: nome, dataInicio, dataFim, grupoReceita)" },
+        { method: "GET", path: "/api/sinistralidade/grupos-receita/ranking", description: "Ranking dos grupos de receita mais caros (query: dataInicio, dataFim, limit)" },
         { method: "GET", path: "/api/sinistralidade/grupos-receita", description: "Lista grupos de receita distintos da sinistralidade importada" },
         { method: "GET", path: "/api/evolucao-contrato/consolidado", description: "Dados consolidados para dashboard (query: dataInicio, dataFim, contratos)" },
         { method: "GET", path: "/api/evolucao-contrato/:nrContrato", description: "Listar evolução mensal de um contrato" },

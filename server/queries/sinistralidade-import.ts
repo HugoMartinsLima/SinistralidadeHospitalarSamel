@@ -439,3 +439,112 @@ export async function getGruposReceitaImport(): Promise<GrupoReceita[]> {
   const rows = await executeQuery<{ GRUPORECEITA: string }>(sql);
   return rows.map(row => ({ grupoReceita: row.GRUPORECEITA }));
 }
+
+// Interface para o ranking de grupos de receita
+export interface GrupoReceitaRanking {
+  gruporeceita: string;
+  totalProcedimentos: number;
+  valorTotal: number;
+  ticketMedio: number;
+}
+
+export interface GrupoReceitaRankingTotais {
+  totalGeral: number;
+  totalProcedimentos: number;
+  ticketMedioGeral: number;
+}
+
+export interface GrupoReceitaRankingResponse {
+  data: GrupoReceitaRanking[];
+  totais: GrupoReceitaRankingTotais;
+  pagination: {
+    limit: number;
+    total: number;
+  };
+}
+
+interface FiltroGrupoReceitaRanking {
+  dataInicio: string;
+  dataFim: string;
+  limit?: number;
+}
+
+/**
+ * GET /api/sinistralidade/grupos-receita/ranking
+ * Retorna os grupos de receita mais caros (ranking por valorTotal)
+ * Ordenado por valor total decrescente
+ * FILTRO: Usa DT_PROCEDIMENTO para filtrar por período
+ */
+export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking): Promise<GrupoReceitaRankingResponse> {
+  const { dataInicio, dataFim, limit = 10 } = filtros;
+  
+  // Validar e sanitizar limit (deve ser inteiro positivo entre 1 e 100)
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 10)));
+  
+  const binds: Record<string, any> = {
+    dataInicio,
+    dataFim,
+  };
+  
+  // Query para top N grupos - limit inline (sanitizado) pois Oracle não aceita bind em FETCH FIRST
+  // ticketMedio = valorTotal / totalProcedimentos (não usar AVG que divide diferente)
+  const sqlRanking = `
+    SELECT 
+      GRUPORECEITA,
+      COUNT(*) AS TOTAL_PROCEDIMENTOS,
+      NVL(SUM(VALORTOTAL), 0) AS VALOR_TOTAL,
+      ROUND(NVL(SUM(VALORTOTAL), 0) / NULLIF(COUNT(*), 0), 2) AS TICKET_MEDIO
+    FROM SAMEL.SINISTRALIDADE_IMPORT
+    WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND GRUPORECEITA IS NOT NULL
+    GROUP BY GRUPORECEITA
+    ORDER BY VALOR_TOTAL DESC
+    FETCH FIRST ${safeLimit} ROWS ONLY
+  `;
+  
+  // Query para totais gerais (considera TODOS os registros, não apenas o limit)
+  // ticketMedioGeral = totalGeral / totalProcedimentos
+  const sqlTotais = `
+    SELECT 
+      NVL(SUM(VALORTOTAL), 0) AS TOTAL_GERAL,
+      COUNT(*) AS TOTAL_PROCEDIMENTOS,
+      ROUND(NVL(SUM(VALORTOTAL), 0) / NULLIF(COUNT(*), 0), 2) AS TICKET_MEDIO_GERAL,
+      COUNT(DISTINCT GRUPORECEITA) AS TOTAL_GRUPOS
+    FROM SAMEL.SINISTRALIDADE_IMPORT
+    WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
+      AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
+      AND GRUPORECEITA IS NOT NULL
+  `;
+  
+  // Executar queries em paralelo
+  const [rankingRows, totaisRows] = await Promise.all([
+    executeQuery<Record<string, any>>(sqlRanking, binds),
+    executeQuery<Record<string, any>>(sqlTotais, binds),
+  ]);
+  
+  // Mapear resultados do ranking
+  const data: GrupoReceitaRanking[] = rankingRows.map(row => ({
+    gruporeceita: row.GRUPORECEITA,
+    totalProcedimentos: Number(row.TOTAL_PROCEDIMENTOS) || 0,
+    valorTotal: Number(row.VALOR_TOTAL) || 0,
+    ticketMedio: Number(row.TICKET_MEDIO) || 0,
+  }));
+  
+  // Mapear totais
+  const totaisRow = totaisRows[0] || {};
+  const totais: GrupoReceitaRankingTotais = {
+    totalGeral: Number(totaisRow.TOTAL_GERAL) || 0,
+    totalProcedimentos: Number(totaisRow.TOTAL_PROCEDIMENTOS) || 0,
+    ticketMedioGeral: Number(totaisRow.TICKET_MEDIO_GERAL) || 0,
+  };
+  
+  return {
+    data,
+    totais,
+    pagination: {
+      limit: safeLimit,
+      total: Number(totaisRow.TOTAL_GRUPOS) || 0,
+    },
+  };
+}
