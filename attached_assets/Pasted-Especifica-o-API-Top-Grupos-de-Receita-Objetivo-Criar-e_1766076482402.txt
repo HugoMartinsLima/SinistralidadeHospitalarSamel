@@ -1,0 +1,169 @@
+Especificação: API Top Grupos de Receita
+Objetivo
+Criar endpoint que retorna os grupos de receita mais caros da tabela sinistralidade_import, agregados por período, para exibição no Dashboard.
+
+Endpoint
+GET /api/sinistralidade/grupos-receita/ranking
+Query Parameters
+Parâmetro	Tipo	Obrigatório	Descrição
+dataInicio	string	Sim	Data inicial no formato DD/MM/YYYY
+dataFim	string	Sim	Data final no formato DD/MM/YYYY
+limit	number	Não	Quantidade máxima de grupos (default: 10)
+Exemplo de Requisição
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5
+Response Structure
+
+{
+  "data": [
+    {
+      "gruporeceita": "EXAMES",
+      "totalProcedimentos": 1250,
+      "valorTotal": 485230.50,
+      "ticketMedio": 388.18
+    },
+    {
+      "gruporeceita": "CONSULTAS",
+      "totalProcedimentos": 3420,
+      "valorTotal": 342000.00,
+      "ticketMedio": 100.00
+    },
+    {
+      "gruporeceita": "INTERNAÇÃO",
+      "totalProcedimentos": 45,
+      "valorTotal": 298500.00,
+      "ticketMedio": 6633.33
+    }
+  ],
+  "totais": {
+    "totalGeral": 1125730.50,
+    "totalProcedimentos": 4715,
+    "ticketMedioGeral": 238.74
+  },
+  "pagination": {
+    "limit": 5,
+    "total": 12
+  }
+}
+Campos do Response
+Array data[] (ordenado por valorTotal DESC):
+
+Campo	Tipo	Descrição
+gruporeceita	string	Nome do grupo de receita
+totalProcedimentos	number	Quantidade total de procedimentos/registros
+valorTotal	number	Soma de valortotal do grupo
+ticketMedio	number	Média de valor por procedimento (valorTotal / totalProcedimentos)
+Objeto totais:
+
+Campo	Tipo	Descrição
+totalGeral	number	Soma de todos os valores (não apenas do limit)
+totalProcedimentos	number	Total de procedimentos (não apenas do limit)
+ticketMedioGeral	number	Ticket médio geral
+Objeto pagination:
+
+Campo	Tipo	Descrição
+limit	number	Limite aplicado
+total	number	Total de grupos distintos existentes
+SQL Query (Oracle)
+Query Principal (Top N grupos)
+
+SELECT 
+    gruporeceita,
+    COUNT(*) AS totalProcedimentos,
+    SUM(valortotal) AS valorTotal,
+    ROUND(AVG(valortotal), 2) AS ticketMedio
+FROM 
+    sinistralidade_import
+WHERE 
+    data BETWEEN TO_DATE(:dataInicio, 'DD/MM/YYYY') 
+              AND TO_DATE(:dataFim, 'DD/MM/YYYY')
+    AND gruporeceita IS NOT NULL
+GROUP BY 
+    gruporeceita
+ORDER BY 
+    valorTotal DESC
+FETCH FIRST :limit ROWS ONLY
+Query para Totais Gerais
+
+SELECT 
+    SUM(valortotal) AS totalGeral,
+    COUNT(*) AS totalProcedimentos,
+    ROUND(AVG(valortotal), 2) AS ticketMedioGeral,
+    COUNT(DISTINCT gruporeceita) AS totalGrupos
+FROM 
+    sinistralidade_import
+WHERE 
+    data BETWEEN TO_DATE(:dataInicio, 'DD/MM/YYYY') 
+              AND TO_DATE(:dataFim, 'DD/MM/YYYY')
+    AND gruporeceita IS NOT NULL
+Tabela de Referência
+Tabela: sinistralidade_import
+
+Campos utilizados:
+
+Campo	Tipo	Descrição
+data	DATE	Data do procedimento (usado para filtro de período)
+gruporeceita	VARCHAR2	Nome do grupo de receita
+valortotal	NUMBER	Valor total do procedimento
+Comportamento Esperado
+Filtro de período: Usar campo data para filtrar registros entre dataInicio e dataFim
+Agrupamento: Agrupar por gruporeceita
+Ordenação: Sempre ordenar por valorTotal decrescente (mais caros primeiro)
+Limit: Aplicar limite apenas ao array data[], os totais devem considerar TODOS os registros
+Null handling: Ignorar registros onde gruporeceita é NULL
+Headers CORS: Incluir headers padrão para chamadas do frontend
+Exemplo Completo
+Request:
+
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5
+Response (200 OK):
+
+
+{
+  "data": [
+    {
+      "gruporeceita": "EXAMES",
+      "totalProcedimentos": 1250,
+      "valorTotal": 485230.50,
+      "ticketMedio": 388.18
+    },
+    {
+      "gruporeceita": "CONSULTAS",
+      "totalProcedimentos": 3420,
+      "valorTotal": 342000.00,
+      "ticketMedio": 100.00
+    },
+    {
+      "gruporeceita": "INTERNAÇÃO",
+      "totalProcedimentos": 45,
+      "valorTotal": 298500.00,
+      "ticketMedio": 6633.33
+    },
+    {
+      "gruporeceita": "TERAPIAS",
+      "totalProcedimentos": 890,
+      "valorTotal": 178000.00,
+      "ticketMedio": 200.00
+    },
+    {
+      "gruporeceita": "CIRURGIAS",
+      "totalProcedimentos": 12,
+      "valorTotal": 156000.00,
+      "ticketMedio": 13000.00
+    }
+  ],
+  "totais": {
+    "totalGeral": 1589730.50,
+    "totalProcedimentos": 5847,
+    "ticketMedioGeral": 271.89
+  },
+  "pagination": {
+    "limit": 5,
+    "total": 12
+  }
+}
+Integração Frontend
+O Lovable irá:
+
+Criar hook useTopGruposReceita para consumir este endpoint
+Criar componente visual TopGruposReceita para o Dashboard
+Exibir card com lista dos grupos mais caros ordenados por valor
