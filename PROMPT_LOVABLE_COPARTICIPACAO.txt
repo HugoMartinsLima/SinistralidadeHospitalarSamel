@@ -1,0 +1,76 @@
+## Alteração: Novo campo vlCoparticipacao no endpoint GET /api/sinistralidade/contratos/resumo
+
+### Descrição
+O endpoint agora retorna um novo campo `vlCoparticipacao` que representa o valor de coparticipação mensal do contrato.
+
+### Endpoint Afetado
+GET /api/sinistralidade/contratos/resumo
+
+### Novo Campo na Resposta
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| vlCoparticipacao | number | Valor total de coparticipação do período (vl_mensalidade_copart) |
+
+### Exemplo de Resposta Atualizada
+```json
+{
+  "data": [
+    {
+      "apolice": 263,
+      "contratante": "EMPRESA EXEMPLO LTDA",
+      "sinistroTotal": 125450.80,
+      "sinistroTitular": 98200.50,
+      "sinistrosDependentes": 27250.30,
+      "quantidadeBeneficiarios": 45,
+      "quantidadeAtendimentos": 312,
+      "breakeven": 75,
+      "vlMensalidade": 45000.00,
+      "vlPremioContinuidade": 5000.00,
+      "vlCoparticipacao": 3500.00  // NOVO CAMPO
+    }
+  ],
+  "total": 1
+}
+```
+
+### Arquivos a Modificar no Frontend
+
+**1. Atualizar interface de tipos (src/types/sinistralidade.ts ou similar)**
+```typescript
+export interface ResumoContrato {
+  apolice: number;
+  contratante: string | null;
+  sinistroTotal: number;
+  sinistroTitular: number;
+  sinistrosDependentes: number;
+  quantidadeBeneficiarios: number;
+  quantidadeAtendimentos: number;
+  breakeven: number;
+  vlMensalidade: number;
+  vlPremioContinuidade: number;
+  vlCoparticipacao: number;  // ADICIONAR
+}
+```
+
+**2. Atualizar componente de Dashboard/Tabela para exibir o novo campo**
+```tsx
+// Exemplo de uso no componente
+<div className="text-center">
+  <p className="text-xs text-muted-foreground">Coparticipação</p>
+  <p className="text-lg font-bold">
+    {formatCurrency(contrato.vlCoparticipacao)}
+  </p>
+</div>
+```
+
+**3. Se houver cálculos de prêmio total, incluir coparticipação**
+```typescript
+// Exemplo: Prêmio total pode incluir coparticipação
+const premioTotal = vlMensalidade + vlPremioContinuidade + vlCoparticipacao;
+```
+
+### Impacto
+- Nenhuma alteração nos parâmetros de requisição
+- Campo retornado com valor 0 se não houver dados de coparticipação
+- Compatível com versões anteriores (campo adicional)
