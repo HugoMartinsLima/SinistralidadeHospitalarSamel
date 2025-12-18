@@ -1,0 +1,135 @@
+Aqui está o prompt completo para solicitar a alteração:
+
+
+## Alteração: Adicionar parâmetro `contratos` ao endpoint GET /api/sinistralidade/grupos-receita/ranking
+
+### Objetivo
+Permitir filtrar o ranking de grupos de receita por contratos/apólices específicas.
+
+### Parâmetro Adicional
+|
+ Parâmetro 
+|
+ Tipo 
+|
+ Obrigatório 
+|
+ Descrição 
+|
+|
+-----------
+|
+------
+|
+-------------
+|
+-----------
+|
+|
+ contratos 
+|
+ string 
+|
+ Não 
+|
+ Lista de números de apólice separados por vírgula (ex: "263,2444") 
+|
+
+### Comportamento
+- Se `contratos` estiver **presente e não vazio**: filtrar apenas pelos contratos especificados
+- Se `contratos` estiver **ausente ou vazio**: retornar dados de TODOS os contratos da tabela
+
+### Exemplo de Requisição
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2025&dataFim=30/11/2025&contratos=263&limit=5
+
+
+### SQL Sugerido (Oracle)
+```sql
+-- Query principal com filtro opcional de contratos
+SELECT 
+    GRUPORECEITA as gruporeceita,
+    COUNT(*) as totalProcedimentos,
+    SUM(VALORTOTAL) as valorTotal,
+    ROUND(AVG(VALORTOTAL), 2) as ticketMedio
+FROM sinistralidade_import
+WHERE data BETWEEN TO_DATE(:dataInicio, 'DD/MM/YYYY') AND TO_DATE(:dataFim, 'DD/MM/YYYY')
+    AND GRUPORECEITA IS NOT NULL
+    -- Adicionar filtro condicional:
+    AND (:contratos IS NULL OR APOLICE IN (SELECT REGEXP_SUBSTR(:contratos, '[^,]+', 1, LEVEL) 
+                                            FROM DUAL 
+                                            CONNECT BY REGEXP_SUBSTR(:contratos, '[^,]+', 1, LEVEL) IS NOT NULL))
+GROUP BY GRUPORECEITA
+ORDER BY valorTotal DESC
+FETCH FIRST :limit ROWS ONLY;
+Resposta (mesmo formato atual)
+
+{
+  "data": [...],
+  "totais": {
+    "totalGeral": 29286.55,
+    "totalProcedimentos": 307,
+    "ticketMedioGeral": 95.4
+  },
+  "pagination": {
+    "limit": 5,
+    "total": 9
+  }
+}
+
+---
+
+
+
+## Plano Completo: Integrar Top Grupos de Receita com TopBar
+
+### Fase 1: Backend (Replit)
+Solicitar ao Replit para adicionar o parâmetro `contratos` ao endpoint `GET /api/sinistralidade/grupos-receita/ranking`
+
+### Fase 2: Frontend (Lovable)
+
+**1. Atualizar função de API em `src/lib/sinistralidade-api.ts`**
+```typescript
+export async function getTopGruposReceita(
+  dataInicio: string,
+  dataFim: string,
+  limit: number = 10,
+  contratos?: string[]  // NOVO parâmetro opcional
+): Promise<TopGruposReceitaResponse> {
+  const params = new URLSearchParams({
+    dataInicio,
+    dataFim,
+    limit: String(limit),
+  });
+  
+  // Adicionar contratos se especificados
+  if (contratos && contratos.length > 0) {
+    params.append("contratos", contratos.join(","));
+  }
+  // ...
+}
+2. Atualizar hook src/hooks/useTopGruposReceita.tsx
+
+
+export function useTopGruposReceita({ limit = 5 }: UseTopGruposReceitaOptions = {}) {
+  const { dateRange, selectedEmpresas } = useFilters(); // Adicionar selectedEmpresas
+
+  const dataInicio = dateRange?.from ? format(dateRange.from, "dd/MM/yyyy") : "";
+  const dataFim = dateRange?.to ? format(dateRange.to, "dd/MM/yyyy") : "";
+
+  return useQuery<TopGruposReceitaResponse>({
+    queryKey: ["top-grupos-receita", dataInicio, dataFim, limit, selectedEmpresas], // Incluir na cache key
+    queryFn: () => getTopGruposReceita(dataInicio, dataFim, limit, selectedEmpresas), // Passar contratos
+    enabled: !!dataInicio && !!dataFim,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+Resultado Esperado
+Cenário	Comportamento
+Nenhum contrato selecionado na TopBar	Mostra ranking de TODOS os contratos (263 + 2444)
+Contrato 263 selecionado	Mostra ranking apenas do contrato 263
+Contratos 263 e 2444 selecionados	Mostra ranking combinado dos dois
+Período alterado na TopBar	Atualiza automaticamente com o novo período
+Arquivos a Modificar
+Arquivo	Alteração
+src/lib/sinistralidade-api.ts	Adicionar parâmetro contratos à função
+src/hooks/useTopGruposReceita.tsx	Usar selectedEmpresas do FilterContext

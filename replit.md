@@ -1,137 +1,58 @@
 # API de Sinistralidade Hospitalar
 
 ## Overview
-This project is a RESTful API built with Node.js and Express, designed to manage hospital claims (sinistros). It serves as the backend for a frontend application being developed in Lovable. The API aims to provide a comprehensive solution for handling patient information, claim details, and various statistics related to hospital sinistrality. The vision is to streamline the management of healthcare claims, offering a robust and scalable backend for a critical administrative application.
+This project is a RESTful API built with Node.js and Express, designed to manage hospital claims (sinistros). It serves as the backend for a frontend application and aims to provide a comprehensive solution for handling patient information, claim details, and various statistics related to hospital sinistrality. The vision is to streamline the management of healthcare claims, offering a robust and scalable backend for a critical administrative application.
 
 ## User Preferences
 I prefer simple language and clear explanations. I want iterative development, so please ask before making major changes. I prefer detailed explanations for complex implementations.
 
 ## System Architecture
-The API is built using Node.js with the Express framework. It connects to an Oracle Database (version 19c) using the official `oracledb` driver, utilizing a connection pool for efficient resource management (min 2, max 10 connections).
+The API is built using Node.js with the Express framework, connecting to an Oracle Database (version 19c) via the `oracledb` driver with a connection pool.
 
 **Key Architectural Decisions:**
-- **Backend Framework**: Node.js and Express for high performance and scalability.
-- **Database**: Oracle Database (19c) for robust data management, accessed via a private network.
-  - **Collation Configuration**: Each Oracle connection is configured with `ALTER SESSION SET NLS_COMP=ANSI NLS_SORT=BINARY` to match SQL Developer's binary collation. This ensures `SELECT DISTINCT` treats accented characters (á, é, ã) as different from unaccented ones (a, e, a), preventing data loss in query results. Without this setting, the linguistic collation would collapse rows with accent differences, causing discrepancies between SQL Developer (526 records) and Node.js driver (520 records).
+- **Backend Framework**: Node.js and Express for performance and scalability.
+- **Database**: Oracle Database (19c) with `oracledb` driver. Each connection is configured with `ALTER SESSION SET NLS_COMP=ANSI NLS_SORT=BINARY` to ensure binary collation for accurate `SELECT DISTINCT` results.
 - **CORS**: Configured to allow requests from any origin.
-- **Environment Management**: Utilizes Replit Secrets for secure storage of sensitive credentials.
-- **Development Workflow**: Uses `tsx` for direct TypeScript execution during development (`npm run dev`), avoiding compilation steps.
-- **Route Isolation**: A dedicated Express sub-application (`clientApp`) is used to separate API routes (`/api`) from frontend middleware (Vite), resolving 404 issues during development.
-- **Data Validation**: Zod schemas are employed for robust input validation, returning 400 for validation errors.
+- **Environment Management**: Replit Secrets for sensitive credentials.
+- **Development Workflow**: `tsx` for direct TypeScript execution.
+- **Route Isolation**: An Express sub-application separates API routes from frontend middleware.
+- **Data Validation**: Zod schemas for input validation.
 - **Security**: SQL queries use bind variables to prevent SQL Injection.
-- **UI/UX (Implicit)**: The API supports frontend development with endpoints for dropdowns (e.g., `grupos-receita`) and detailed reports, anticipating the needs of a rich UI.
 - **Feature Specifications**:
-    - **CRUD Operations**: Complete CREATE, READ, UPDATE, and DELETE functionalities for `sinistros` and `pacientes`.
-    - **Health Check**: An endpoint (`GET /api/health`) to monitor API and database connectivity.
-    - **Filtering and Pagination**: Supported on listing endpoints (`/api/sinistros`, `/api/pacientes`, `/api/apolices/:nrContrato/detalhamento`).
-    - **Statistical Endpoints**: Provides general statistics on sinistros (`GET /api/estatisticas`).
-    - **Contract Listing**: Endpoints for listing contracts (`GET /api/contratos`) with optional classification information (cdClassifContrato, dsClassificacao) from `pls_classificacao_contrato` table. Supports pagination with total count, search by contract number or company name (razão social). Excludes contracts with classification code 3 (`cd_classif_contrato NOT IN (3)`). Returns data in **camelCase** format (`nrContrato`, `dsEstipulante`, `cdCgcEstipulante`) using quoted SQL aliases to preserve case.
-    - **Detailed Policy Information**: A complex endpoint (`GET /api/apolices/:nrContrato/detalhamento`) for comprehensive policy breakdown, involving extensive SQL queries (CTEs, JOINs).
-      - **IMPORTANTE**: Paginação é opcional - se `limit` não for enviado, retorna TODOS os registros
-      - **Normalização de chaves**: SQL usa aliases sem aspas duplas, Oracle retorna MAIÚSCULAS. As funções de detalhamento normalizam localmente para lowercase sem afetar outros endpoints.
-    - **Busca de Paciente (Pessoa Física)**: `GET /api/pacientes/busca` - Busca registros de um paciente/beneficiário em TODOS os contratos
-      - Query params: `nome` (obrigatório, min 3 chars), `dataInicio`, `dataFim`, `grupoReceita` (opcional)
-      - **Otimização em 2 etapas** (performance):
-        1. **Etapa 1**: Query rápida na tabela `pessoa_fisica` para encontrar `cd_pessoa_fisica` por nome (FETCH FIRST 100 ROWS)
-        2. **Etapa 2**: Query de detalhamento filtrada pelos IDs encontrados (`WHERE cd_pessoa_fisica IN (...)`)
-      - Resposta: `{ data: [...], total: N, paciente: "NOME BUSCADO" }`
-    - **Resumo de Contratos**: `GET /api/contratos/resumo` - Dados agregados por contrato para dashboard
-      - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula), `grupoReceita` (opcional)
-      - Usa SQL de detalhamento completo como base para garantir valores financeiros corretos
-      - Resposta: `{ data: [{ nrContrato, dsEstipulante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos }], total: N }`
-    - **Classificações de Contratos**: `GET /api/classificacoes` - Lista classificações com contagem de contratos
-      - Resposta: `{ data: [{ dsClassificacao: "PLURAL PME", quantidade: 8 }], total: N }`
-    - **Detalhamento Consolidado por Classificação**: `GET /api/classificacao/:dsClassificacao/detalhamento-consolidado`
-      - Query params: `dataInicio`, `dataFim`, `grupoReceita` (opcional)
-      - Consolida dados de todos os contratos de uma classificação
-      - Resposta: `{ data: [...], total: N, classificacao: "...", contratos_incluidos: N, lista_contratos: [...] }`
-    - **Importação de Sinistralidade (SAMEL)**: Endpoints para inserir dados na tabela `SAMEL.SINISTRALIDADE_IMPORT`
-      - `POST /api/sinistralidade/import` - Importa registros (body: `{ registros: [...] }`)
-        - Suporta batch insert com transação
-        - Todos os 45 campos são opcionais
-        - Datas aceitas: DD/MM/YYYY ou YYYY-MM-DD
-        - Resposta: `{ success: true/false, insertedCount: N, failedCount: N }`
-      - `GET /api/sinistralidade/import/count` - Conta registros na tabela
-      - `DELETE /api/sinistralidade/import` - Limpa tabela (TRUNCATE)
-      - **Documentação Lovable**: `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE.md` e `PROMPT_LOVABLE_IMPORT_SINISTRALIDADE_RESUMIDO.txt`
-      - **Configuração Oracle**: Requer GRANT INSERT ON SAMEL.SINISTRALIDADE_IMPORT ao usuário Tasy
-    - **Breakeven por Contrato**: Endpoints para gerenciar breakeven na tabela `sini_empresa_breakeven`
-      - `GET /api/breakeven` - Lista todos os breakevens
-      - `GET /api/breakeven/:nrContrato` - Busca breakeven de um contrato
-      - `POST /api/breakeven` - Cria ou atualiza breakeven (UPSERT)
-      - `POST /api/breakeven/batch` - Salva múltiplos em lote
-      - `DELETE /api/breakeven/:nrContrato` - Remove breakeven
-      - **Documentação Lovable**: `PROMPT_LOVABLE_BREAKEVEN.md` e `PROMPT_LOVABLE_BREAKEVEN_RESUMIDO.txt`
-    - **Análise de Sinistralidade Importada**: 4 APIs para análise dos dados na tabela `SAMEL.SINISTRALIDADE_IMPORT`
-      - `GET /api/sinistralidade/contratos/resumo` - Dados agregados por contrato para dashboard
-        - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula), `grupoReceita` (opcional)
-        - Inclui breakeven da tabela `sini_empresa_breakeven` (default 75%)
-        - Resposta: `{ data: [{ apolice, contratante, sinistroTotal, sinistroTitular, sinistrosDependentes, quantidadeBeneficiarios, quantidadeAtendimentos, breakeven }], total }`
-      - `GET /api/sinistralidade/detalhamento` - Todos os 45 campos com paginação opcional
-        - Query params: `nrContrato` (obrigatório), `dataInicio`, `dataFim`, `grupoReceita` (opcional), `limit`, `offset` (opcionais)
-        - Paginação opcional - sem limit retorna TODOS os registros
-        - Resposta: `{ data: [...], total, pagination, filters }`
-      - `GET /api/sinistralidade/pacientes/busca` - Busca case insensitive por nome
-        - Query params: `nome` (obrigatório, min 3 chars), `dataInicio`, `dataFim`, `grupoReceita` (opcional)
-        - Busca em `beneficiario` e `nomePacientePrestador`
-        - Limitado a 500 registros
-        - Resposta: `{ data: [...], total, paciente: "NOME BUSCADO", filters }`
-      - `GET /api/sinistralidade/grupos-receita` - Lista grupos de receita distintos
-        - Sem parâmetros, ordenado alfabeticamente
-        - Resposta: `{ data: [{ grupoReceita: "CONSULTAS" }, ...], total }`
-      - `GET /api/sinistralidade/grupos-receita/ranking` - Ranking dos grupos mais caros
-        - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `limit` (opcional, default 10)
-        - Resposta: `{ data: [{ gruporeceita, totalProcedimentos, valorTotal, ticketMedio }], totais: { totalGeral, totalProcedimentos, ticketMedioGeral }, pagination: { limit, total } }`
-        - Ordenado por `valorTotal DESC` (mais caro primeiro)
-        - `totais` considera TODOS os registros (não apenas o limit)
-      - **Documentação Lovable**: 
-        - Sinistralidade Import: `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_APIS.md` e `PROMPT_LOVABLE_SINISTRALIDADE_IMPORT_RESUMIDO.txt`
-        - Top Grupos Receita: `PROMPT_LOVABLE_TOP_GRUPOS_RECEITA.md` e `PROMPT_LOVABLE_TOP_GRUPOS_RESUMIDO.txt`
-    - **Evolução Mensal de Contrato**: Endpoints CRUD para tabela `SAMEL.SINI_EVOLUCAO_CONTRATO`
-      - `GET /api/evolucao-contrato/consolidado` - Dados consolidados para dashboard
-        - Query params: `dataInicio` (obrigatório), `dataFim` (obrigatório), `contratos` (opcional, lista separada por vírgula)
-        - Resposta: `{ data: [...], aggregated: { totalPremio, totalSinistro, sinistralidadeMedia, totalContratos, totalRegistros }, pagination: { total } }`
-        - **Documentação Lovable**: `PROMPT_LOVABLE_DASHBOARD_EVOLUCAO.md` e `PROMPT_LOVABLE_DASHBOARD_RESUMIDO.txt`
-      - `GET /api/evolucao-contrato/:nrContrato` - Lista todos os registros de evolução de um contrato
-        - Resposta: `{ data: [...], total: N, nrContrato: N }`
-      - `GET /api/evolucao-contrato/:nrContrato/:periodo` - Busca registro específico
-        - Período no formato: `DD/MM/YYYY` (primeiro dia do mês)
-        - Resposta: `{ nrContrato, periodo, vlPremio, vlPremioContinuidade, vlPremioTotal, vlSinistro, pcSinistralidade, vlLimitadorTecnico, pcDistorcao, vlAporteFinanceiro }`
-      - `POST /api/evolucao-contrato` - Insere ou atualiza registro (UPSERT)
-        - Body: `{ nrContrato, periodo, vlPremio, vlPremioContinuidade, vlPremioTotal, vlSinistro, pcSinistralidade, vlLimitadorTecnico, pcDistorcao, vlAporteFinanceiro }`
-        - Resposta: `{ success: true, message: "...", action: "insert" | "update" }`
-      - `PUT /api/evolucao-contrato/:nrContrato/:periodo` - Atualiza registro existente
-      - `DELETE /api/evolucao-contrato/:nrContrato/:periodo` - Remove registro
-      - **Campos da tabela**:
-        - `NR_CONTRATO` (NUMBER) - Número do contrato
-        - `PERIODO` (DATE) - Mês/ano de referência
-        - `VL_PREMIO` (NUMBER 15,2) - Valor do prêmio
-        - `VL_PREMIO_CONTINUIDADE` (NUMBER 15,2) - Valor do prêmio continuidade
-        - `VL_PREMIO_TOTAL` (NUMBER 15,2) - Soma prêmio + continuidade
-        - `VL_SINISTRO` (NUMBER 15,2) - Valor do sinistro
-        - `PC_SINISTRALIDADE` (NUMBER 8,4) - Percentual de sinistralidade
-        - `VL_LIMITADOR_TECNICO` (NUMBER 15,2) - Valor do limitador técnico
-        - `PC_DISTORCAO` (NUMBER 8,4) - Percentual de distorção
-        - `VL_APORTE_FINANCEIRO` (NUMBER 15,2) - Valor do aporte financeiro
-      - **Documentação Lovable**: `PROMPT_LOVABLE_EVOLUCAO_CONTRATO.md` e `PROMPT_LOVABLE_EVOLUCAO_RESUMIDO.txt`
-    - **Informative Endpoints**: `/api` provides general API information and available endpoints.
-    - **Development Endpoints**: `/api/contratos-teste` provides fixed data for frontend development without database dependency.
-    - **Date Format**: All dates are returned in ISO (YYYY-MM-DD) format.
-    - **Lovable Integration**: Documentation files created for frontend integration:
-      - **Dropdowns/Filtros**:
-        - `PROMPT_LOVABLE_DROPDOWN_EMPRESAS.md`: Complete guide for implementing company/contract dropdown using `/api/contratos`
-        - `PROMPT_LOVABLE_EMPRESAS_RESUMIDO.txt`: Quick-start prompt for Lovable AI
-        - `PROMPT_LOVABLE_DROPDOWN_GRUPOS.md`: Guide for implementing revenue groups dropdown
-        - `API_GRUPOS_RECEITA.md`: Technical documentation for groups endpoint
-      - **Página de Detalhamento**:
-        - `PROMPT_LOVABLE_PAGINA_DETALHAMENTO.md`: Complete guide for building detailed claims analysis page with **45 columns** table, filters (date range, company, revenue group), totals summary, and pagination using `/api/apolices/:nrContrato/detalhamento`
-        - `PROMPT_LOVABLE_DETALHAMENTO_RESUMIDO.txt`: Quick-start prompt with essential code for detalhamento page
-        - **IMPORTANTE**: O SQL retorna exatamente **45 colunas** (não 47). As colunas `vl_procedimento_cobrado` e `vl_procedimento_a_pagar` não existem no SELECT original.
+    - **CRUD Operations**: For `sinistros` and `pacientes`.
+    - **Health Check**: Endpoint (`GET /api/health`) for API and DB connectivity.
+    - **Filtering and Pagination**: Supported on listing endpoints.
+    - **Statistical Endpoints**: General statistics on sinistros (`GET /api/estatisticas`).
+    - **Contract Listing**: `GET /api/contratos` with optional classification, pagination, and search, excluding contracts with `cd_classif_contrato = 3`. Returns data in **camelCase**.
+    - **Detailed Policy Information**: `GET /api/apolices/:nrContrato/detalhamento` provides comprehensive policy breakdown with extensive SQL queries. Optional pagination; if `limit` is not provided, all records are returned.
+    - **Patient Search (Individual)**: `GET /api/pacientes/busca` searches across all contracts for a patient/beneficiary by name, using a two-step optimized query.
+    - **Contract Summary**: `GET /api/contratos/resumo` provides aggregated data for dashboards.
+    - **Contract Classifications**: `GET /api/classificacoes` lists classifications with contract counts.
+    - **Consolidated Classification Details**: `GET /api/classificacao/:dsClassificacao/detalhamento-consolidado` consolidates data for all contracts within a classification.
+    - **Sinistrality Import (SAMEL)**: Endpoints to import (`POST /api/sinistralidade/import`), count (`GET /api/sinistralidade/import/count`), and clear (`DELETE /api/sinistralidade/import`) data in `SAMEL.SINISTRALIDADE_IMPORT`. Supports batch inserts and various date formats.
+    - **Breakeven Management**: CRUD endpoints (`/api/breakeven`, `/api/breakeven/:nrContrato`, `/api/breakeven/batch`) for `sini_empresa_breakeven` table, supporting UPSERT operations.
+    - **Imported Sinistrality Analysis**:
+        - `GET /api/sinistralidade/contratos/resumo`: Aggregated data including breakeven.
+        - `GET /api/sinistralidade/detalhamento`: All 45 fields with optional pagination.
+        - `GET /api/sinistralidade/pacientes/busca`: Case-insensitive patient search by name, limited to 500 records.
+        - `GET /api/sinistralidade/grupos-receita`: Lists distinct revenue groups.
+        - `GET /api/sinistralidade/grupos-receita/ranking`: Ranks revenue groups by cost.
+    - **Monthly Contract Evolution**: CRUD endpoints for `SAMEL.SINI_EVOLUCAO_CONTRATO`.
+        - `GET /api/evolucao-contrato/consolidado`: Consolidated data for dashboards.
+        - `GET /api/evolucao-contrato/:nrContrato`: Lists all evolution records for a contract.
+        - `GET /api/evolucao-contrato/:nrContrato/:periodo`: Retrieves a specific record.
+        - `POST /api/evolucao-contrato`: Inserts or updates (UPSERT) a record.
+        - `PUT /api/evolucao-contrato/:nrContrato/:periodo`: Updates an existing record.
+        - `DELETE /api/evolucao-contrato/:nrContrato/:periodo`: Removes a record.
+    - **Informative Endpoints**: `/api` for general API information.
+    - **Development Endpoints**: `/api/contratos-teste` for fixed frontend data.
+    - **Date Format**: All dates returned in ISO (YYYY-MM-DD) format.
+    - **Lovable Integration**: Dedicated documentation for frontend integration (`PROMPT_LOVABLE_*.md` files).
 
 ## External Dependencies
-- **Oracle Database**: The core persistent data store for sinistros and patient information.
-- **`oracledb`**: Official Oracle driver for Node.js, managing database connections and queries.
-- **Ngrok**: Used to expose the locally running API externally via HTTPS for frontend consumption.
-- **Replit Secrets**: Integrated for securely managing environment variables like database credentials (`ORACLE_HOST`, `ORACLE_PORT`, `ORACLE_USER`, `ORACLE_PASSWORD`, `ORACLE_SERVICE`).
-- **Vite**: Frontend build tool (used in conjunction with Express for route handling).
-- **Zod**: Library for schema declaration and validation.
+- **Oracle Database**: Core persistent data store.
+- **`oracledb`**: Official Oracle driver for Node.js.
+- **Ngrok**: Exposes local API externally for frontend consumption.
+- **Replit Secrets**: Securely manages environment variables.
+- **Vite**: Frontend build tool (integrated with Express).
+- **Zod**: Schema declaration and validation library.

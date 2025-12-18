@@ -1769,7 +1769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/sinistralidade/grupos-receita/ranking - Ranking dos grupos mais caros
   app.get("/api/sinistralidade/grupos-receita/ranking", async (req, res) => {
     try {
-      const { dataInicio, dataFim, limit } = req.query;
+      const { dataInicio, dataFim, limit, contratos } = req.query;
       
       if (!dataInicio || !dataFim) {
         return res.status(400).json({
@@ -1794,6 +1794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dataInicio: String(dataInicio),
         dataFim: String(dataFim),
         limit: parsedLimit,
+        contratos: contratos ? String(contratos) : undefined,
       });
       
       res.json(resultado);

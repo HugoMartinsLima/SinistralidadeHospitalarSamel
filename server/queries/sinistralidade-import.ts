@@ -467,6 +467,7 @@ interface FiltroGrupoReceitaRanking {
   dataInicio: string;
   dataFim: string;
   limit?: number;
+  contratos?: string;
 }
 
 /**
@@ -474,9 +475,10 @@ interface FiltroGrupoReceitaRanking {
  * Retorna os grupos de receita mais caros (ranking por valorTotal)
  * Ordenado por valor total decrescente
  * FILTRO: Usa DT_PROCEDIMENTO para filtrar por período
+ * FILTRO OPCIONAL: contratos (lista separada por vírgula)
  */
 export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking): Promise<GrupoReceitaRankingResponse> {
-  const { dataInicio, dataFim, limit = 10 } = filtros;
+  const { dataInicio, dataFim, limit = 10, contratos } = filtros;
   
   // Validar e sanitizar limit (deve ser inteiro positivo entre 1 e 100)
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 10)));
@@ -485,6 +487,19 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
     dataInicio,
     dataFim,
   };
+  
+  // Construir filtro de contratos dinamicamente
+  let filtroContratos = '';
+  if (contratos && contratos.trim()) {
+    const listaContratos = contratos.split(',').map(c => c.trim()).filter(c => c);
+    if (listaContratos.length > 0) {
+      // Sanitizar: apenas números
+      const contratosNumericos = listaContratos.filter(c => /^\d+$/.test(c));
+      if (contratosNumericos.length > 0) {
+        filtroContratos = ` AND APOLICE IN (${contratosNumericos.join(',')})`;
+      }
+    }
+  }
   
   // Query para top N grupos - limit inline (sanitizado) pois Oracle não aceita bind em FETCH FIRST
   // ticketMedio = valorTotal / totalProcedimentos (não usar AVG que divide diferente)
@@ -497,7 +512,7 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
       AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
-      AND GRUPORECEITA IS NOT NULL
+      AND GRUPORECEITA IS NOT NULL${filtroContratos}
     GROUP BY GRUPORECEITA
     ORDER BY VALOR_TOTAL DESC
     FETCH FIRST ${safeLimit} ROWS ONLY
@@ -514,7 +529,7 @@ export async function getGruposReceitaRanking(filtros: FiltroGrupoReceitaRanking
     FROM SAMEL.SINISTRALIDADE_IMPORT
     WHERE DT_PROCEDIMENTO >= TO_DATE(:dataInicio, 'DD/MM/YYYY')
       AND DT_PROCEDIMENTO <= TO_DATE(:dataFim, 'DD/MM/YYYY')
-      AND GRUPORECEITA IS NOT NULL
+      AND GRUPORECEITA IS NOT NULL${filtroContratos}
   `;
   
   // Executar queries em paralelo

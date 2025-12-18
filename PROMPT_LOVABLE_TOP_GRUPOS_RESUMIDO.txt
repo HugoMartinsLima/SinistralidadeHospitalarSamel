@@ -3,7 +3,17 @@ Crie um componente para exibir o ranking dos grupos de receita mais caros no Das
 API: https://seu-dominio.replit.app
 
 ENDPOINT:
-GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5&contratos=263,2444
+
+PARÂMETROS:
+- dataInicio (obrigatório, DD/MM/YYYY)
+- dataFim (obrigatório, DD/MM/YYYY)
+- limit (opcional, default 10, max 100)
+- contratos (opcional, lista de apólices separadas por vírgula)
+
+COMPORTAMENTO:
+- contratos presente: filtra apenas pelos contratos especificados
+- contratos ausente: retorna dados de TODOS os contratos
 
 RESPOSTA:
 {
@@ -18,11 +28,6 @@ RESPOSTA:
   },
   "pagination": { "limit": 5, "total": 12 }
 }
-
-PARÂMETROS:
-- dataInicio (obrigatório, DD/MM/YYYY)
-- dataFim (obrigatório, DD/MM/YYYY)
-- limit (opcional, default 10)
 
 CAMPOS:
 - gruporeceita: Nome do grupo
@@ -41,20 +46,64 @@ EXIBIÇÃO SUGERIDA:
    - Barra de progresso relativa ao maior valor
    - Quantidade de procedimentos e ticket médio
 
-CÓDIGO ESSENCIAL:
+CÓDIGO ESSENCIAL (com suporte a filtro por contratos):
 ```tsx
-const { data } = useQuery({
-  queryKey: ['/api/sinistralidade/grupos-receita/ranking', dataInicio, dataFim, limit],
-  queryFn: () => fetch(`${API}/api/sinistralidade/grupos-receita/ranking?dataInicio=${dataInicio}&dataFim=${dataFim}&limit=${limit}`).then(r => r.json())
-});
+interface TopGruposReceitaProps {
+  dataInicio: string;
+  dataFim: string;
+  limit?: number;
+  contratos?: string[];  // Lista de nºs de apólice
+}
 
-// Renderizar lista
-{data?.data.map((grupo, index) => (
-  <div key={grupo.gruporeceita}>
-    <Badge>{index + 1}</Badge>
-    <span>{grupo.gruporeceita}</span>
-    <span>{formatCurrency(grupo.valorTotal)}</span>
-    <Progress value={(grupo.valorTotal / data.data[0].valorTotal) * 100} />
-  </div>
-))}
+export function TopGruposReceita({ dataInicio, dataFim, limit = 10, contratos }: TopGruposReceitaProps) {
+  const { data } = useQuery({
+    queryKey: ['/api/sinistralidade/grupos-receita/ranking', dataInicio, dataFim, limit, contratos],
+    queryFn: () => {
+      const params = new URLSearchParams({ dataInicio, dataFim, limit: String(limit) });
+      if (contratos?.length) params.append("contratos", contratos.join(","));
+      return fetch(`${API}/api/sinistralidade/grupos-receita/ranking?${params}`).then(r => r.json());
+    }
+  });
+
+  return (
+    <>
+      {data?.data.map((grupo, index) => (
+        <div key={grupo.gruporeceita}>
+          <Badge>{index + 1}</Badge>
+          <span>{grupo.gruporeceita}</span>
+          <span>{formatCurrency(grupo.valorTotal)}</span>
+          <Progress value={(grupo.valorTotal / data.data[0].valorTotal) * 100} />
+        </div>
+      ))}
+    </>
+  );
+}
 ```
+
+INTEGRAÇÃO COM TopBar/FilterContext:
+```tsx
+import { useFilters } from '@/contexts/FilterContext';
+
+export function useTopGruposReceita({ limit = 5 } = {}) {
+  const { dateRange, selectedEmpresas } = useFilters();
+  
+  const dataInicio = dateRange?.from ? format(dateRange.from, "dd/MM/yyyy") : "";
+  const dataFim = dateRange?.to ? format(dateRange.to, "dd/MM/yyyy") : "";
+
+  return useQuery({
+    queryKey: ["top-grupos-receita", dataInicio, dataFim, limit, selectedEmpresas],
+    queryFn: () => getTopGruposReceita(dataInicio, dataFim, limit, selectedEmpresas),
+    enabled: !!dataInicio && !!dataFim,
+  });
+}
+```
+
+EXEMPLOS DE CHAMADAS:
+# Todos os contratos
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5
+
+# Apenas contrato 263
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5&contratos=263
+
+# Contratos 263 e 2444
+GET /api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5&contratos=263,2444

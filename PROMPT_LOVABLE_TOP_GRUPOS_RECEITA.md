@@ -19,11 +19,27 @@ Retorna os grupos de receita mais caros ordenados por valor total.
 | dataInicio | string | Sim | Data inicial (DD/MM/YYYY) | 01/11/2024 |
 | dataFim | string | Sim | Data final (DD/MM/YYYY) | 30/11/2024 |
 | limit | number | Não | Quantidade máxima (default: 10, max: 100) | 5 |
+| contratos | string | Não | Lista de nº de apólice separados por vírgula | 263,2444 |
+
+**Comportamento do filtro `contratos`:**
+- Se `contratos` estiver **presente e não vazio**: filtra apenas pelos contratos especificados
+- Se `contratos` estiver **ausente ou vazio**: retorna dados de TODOS os contratos
 
 **Exemplo de Requisição:**
 ```javascript
+// Todos os contratos
 const response = await fetch(
   `${API_URL}/api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5`
+);
+
+// Apenas contrato 263
+const response = await fetch(
+  `${API_URL}/api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5&contratos=263`
+);
+
+// Contratos 263 e 2444
+const response = await fetch(
+  `${API_URL}/api/sinistralidade/grupos-receita/ranking?dataInicio=01/11/2024&dataFim=30/11/2024&limit=5&contratos=263,2444`
 );
 const data = await response.json();
 ```
@@ -118,17 +134,22 @@ interface TopGruposReceitaProps {
   dataInicio: string;
   dataFim: string;
   limit?: number;
+  contratos?: string[];  // Lista de nºs de apólice
 }
 
-export function TopGruposReceita({ dataInicio, dataFim, limit = 10 }: TopGruposReceitaProps) {
+export function TopGruposReceita({ dataInicio, dataFim, limit = 10, contratos }: TopGruposReceitaProps) {
   const { data, isLoading, error } = useQuery<RankingResponse>({
-    queryKey: ['/api/sinistralidade/grupos-receita/ranking', dataInicio, dataFim, limit],
+    queryKey: ['/api/sinistralidade/grupos-receita/ranking', dataInicio, dataFim, limit, contratos],
     queryFn: async () => {
       const params = new URLSearchParams({
         dataInicio,
         dataFim,
         limit: String(limit),
       });
+      // Adicionar contratos se especificados
+      if (contratos && contratos.length > 0) {
+        params.append("contratos", contratos.join(","));
+      }
       const response = await fetch(`${API_URL}/api/sinistralidade/grupos-receita/ranking?${params}`);
       if (!response.ok) throw new Error('Erro ao buscar ranking');
       return response.json();
